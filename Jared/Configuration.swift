@@ -12,11 +12,13 @@ struct ConfigurationFile: Decodable {
     let routes: [String: RouteConfiguration]
     let webhooks: [Webhook]
     let webServer: WebserverConfiguration
+    let llm: LLMConfiguration?
     
     init() {
         routes = [:]
         webhooks = []
         webServer = WebserverConfiguration(port: 3000)
+        llm = nil
     }
 }
 
