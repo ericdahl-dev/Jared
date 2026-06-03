@@ -40,6 +40,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .appendingPathComponent("Messages").appendingPathComponent("chat.db")
         let viewController = NSApplication.shared.keyWindow?.contentViewController as? ViewController
 		databaseHelper = DatabaseHandler(router: pluginManager.router, databaseLocation: messageDatabaseURL, diskAccessDelegate: viewController)
+
+        let configURL = ConfigurationHelper.getSupportDirectory().appendingPathComponent("config.json")
+        pluginManager.startWatchingConfig(at: configURL)
     }
     
     func applicationWillTerminate(_ aNotification: Notification) {
