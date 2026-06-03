@@ -49,6 +49,13 @@ class DatabaseHandler {
     var refreshSeconds = 5.0
     var statement: OpaquePointer? = nil
     var router: RouterDelegate?
+    private var walSource: DispatchSourceFileSystemObject?
+    private let walSemaphore = DispatchSemaphore(value: 0)
+
+    /// Triggers an immediate poll, bypassing the refresh interval. Used in tests.
+    func triggerImmediateQuery() {
+        walSemaphore.signal()
+    }
     
     init(router: RouterDelegate, databaseLocation: URL, diskAccessDelegate: DiskAccessDelegate?) {
         self.router = router
@@ -63,10 +70,13 @@ class DatabaseHandler {
         
         querySinceID = getCurrentMaxRecordID()
         start()
+        startWALWatcher(databaseLocation: databaseLocation)
     }
     
     deinit {
         shouldExitThread = true
+        walSemaphore.signal()
+        walSource?.cancel()
         if sqlite3_close(db) != SQLITE_OK {
             print("error closing database")
         }
@@ -78,11 +88,42 @@ class DatabaseHandler {
         let dispatchQueue = DispatchQueue(label: "Jared Background Thread", qos: .background)
         dispatchQueue.async(execute: self.backgroundAction)
     }
-    
+
+    private func startWALWatcher(databaseLocation: URL) {
+        let walURL = URL(fileURLWithPath: databaseLocation.path + "-wal")
+
+        // Ensure WAL file exists so we can watch it
+        if !FileManager.default.fileExists(atPath: walURL.path) {
+            FileManager.default.createFile(atPath: walURL.path, contents: nil)
+        }
+
+        let fd = open(walURL.path, O_EVTONLY)
+        guard fd >= 0 else {
+            NSLog("WAL watcher: could not open %@, falling back to polling", walURL.path)
+            return
+        }
+
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fd,
+            eventMask: [.write, .extend, .attrib],
+            queue: DispatchQueue.global(qos: .background)
+        )
+        source.setEventHandler { [weak self] in
+            self?.walSemaphore.signal()
+        }
+        source.setCancelHandler {
+            close(fd)
+        }
+        source.resume()
+        walSource = source
+    }
+
     private func backgroundAction() {
         while shouldExitThread == false {
             let elapsed = queryNewRecords()
-            Thread.sleep(forTimeInterval: max(0, refreshSeconds - elapsed))
+            // Wait up to refreshSeconds, but wake immediately if WAL changes
+            let deadline = DispatchTime.now() + max(0, refreshSeconds - elapsed)
+            _ = walSemaphore.wait(timeout: deadline)
         }
     }
     
