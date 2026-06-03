@@ -37,6 +37,9 @@ class PluginManager: PluginManagerDelegate {
         modules.append(CoreModule(sender: sender))
         modules.append(InternalModule(sender: sender, pluginManager: self))
         modules.append(webHookManager)
+        if let llmConfig = config.llm {
+            modules.append(LLMModule(sender: sender, config: llmConfig, session: .shared))
+        }
     }
     
     func loadPlugins() {
