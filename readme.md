@@ -66,6 +66,7 @@ A configuration file is located at `~/Library/Application Support/Jared/config.j
 + Configure webhooks
 + Set REST API port
 + Disable specific routes
++ Configure LLM integration
 
 See [config-sample.json](Documentation/config-sample.json) for an example.
 
@@ -82,6 +83,11 @@ Jared supports webhooks for sending your server information about incoming and o
 
 ### REST API
 Jared contains a web server with a REST API that can be enabled. This allows you make HTTP requests to send messages to any recipient. For more information, [check out the REST API documentation](Documentation/restapi.md).
+
+### LLM Integration
+Jared can forward any non-command message to a large language model (e.g. GPT-4o) and reply with the response, turning any iMessage conversation into an AI chat.
+
+Add an `"llm"` block to `config.json` with your API key to enable it. For full configuration options and rate limiting details, see the [LLM documentation](Documentation/llm.md).
 
 ## How Jared works  
 Jared reads from the Messages database on a set interval and queries for new messages. It provides a routing framework for actioning on messages, and uses AppleScript to send outgoing messages. It's also multi-threaded so it can take care of multiple requests at once. Jared allows expansion via `.bundle` plugin files, webhooks, and a REST API. This allows commands to be added without modifying the main Jared code base. 
