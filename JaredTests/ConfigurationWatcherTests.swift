@@ -31,6 +31,35 @@ class ConfigurationWatcherTests: XCTestCase {
         wait(for: [expectation], timeout: 3.0)
     }
 
+    func testApplierCalledWithParsedConfig() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let configURL = dir.appendingPathComponent("config.json")
+        let initial = """
+        {"routes":{},"webhooks":[],"webServer":{"port":3000}}
+        """
+        try initial.write(to: configURL, atomically: true, encoding: .utf8)
+
+        class RecordingApplier: ConfigurationApplier {
+            var applied: [ConfigurationFile] = []
+            func apply(_ newConfig: ConfigurationFile) { applied.append(newConfig) }
+        }
+
+        let applier = RecordingApplier()
+        let expectation = XCTestExpectation(description: "apply called")
+        let watcher = ConfigurationWatcher(configURL: configURL, applier: applier) {
+            if !applier.applied.isEmpty { expectation.fulfill() }
+        }
+        watcher.start()
+
+        let updated = """
+        {"routes":{},"webhooks":[],"webServer":{"port":4000}}
+        """
+        try updated.write(to: configURL, atomically: true, encoding: .utf8)
+        wait(for: [expectation], timeout: 3.0)
+        XCTAssertEqual(applier.applied.last?.webServer.port, 4000)
+    }
+
     func testCallbackNotFiredBeforeStart() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
