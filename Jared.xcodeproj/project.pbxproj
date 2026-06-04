@@ -34,8 +34,10 @@
 		EC000001000000000000AA05 /* LLMModuleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA04 /* LLMModuleTests.swift */; };
 		EC000001000000000000AA06 /* LLMConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA00 /* LLMConfiguration.swift */; };
 		EC000001000000000000AA07 /* LLMModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA02 /* LLMModule.swift */; };
+		EC000001000000000000AA30 /* ConfigurationApplier.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA33 /* ConfigurationApplier.swift */; };
 		EC000001000000000000AA08 /* ConfigurationWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA10 /* ConfigurationWatcher.swift */; };
 		EC000001000000000000AA09 /* ConfigurationWatcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA11 /* ConfigurationWatcherTests.swift */; };
+		EC000001000000000000AA32 /* ConfigurationApplier.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA33 /* ConfigurationApplier.swift */; };
 		EC000001000000000000AA0A /* ConfigurationWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA10 /* ConfigurationWatcher.swift */; };
 		EC000001000000000000AA20 /* MessageMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA23 /* MessageMatcher.swift */; };
 		EC000001000000000000AA21 /* MessageMatcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA24 /* MessageMatcherTests.swift */; };
@@ -185,6 +187,7 @@
 		EC000001000000000000AA00 /* LLMConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMConfiguration.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA02 /* LLMModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMModule.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA04 /* LLMModuleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMModuleTests.swift; sourceTree = "<group>"; };
+		EC000001000000000000AA33 /* ConfigurationApplier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationApplier.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA10 /* ConfigurationWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationWatcher.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA11 /* ConfigurationWatcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationWatcherTests.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA23 /* MessageMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageMatcher.swift; sourceTree = "<group>"; };
@@ -428,6 +431,7 @@
 				B3327DC522066427009DD882 /* WebHookManager.swift */,
 				EC000001000000000000AA00 /* LLMConfiguration.swift */,
 				EC000001000000000000AA02 /* LLMModule.swift */,
+				EC000001000000000000AA33 /* ConfigurationApplier.swift */,
 				EC000001000000000000AA10 /* ConfigurationWatcher.swift */,
 				EC000001000000000000AA23 /* MessageMatcher.swift */,
 				B3C59283224DD17900116ECB /* JaredWebServer.swift */,
@@ -743,7 +747,8 @@
 				B3327DC622066427009DD882 /* WebHookManager.swift in Sources */,
 				EC000001000000000000AA01 /* LLMConfiguration.swift in Sources */,
 				EC000001000000000000AA03 /* LLMModule.swift in Sources */,
-				EC000001000000000000AA08 /* ConfigurationWatcher.swift in Sources */,
+					EC000001000000000000AA30 /* ConfigurationApplier.swift in Sources */,
+					EC000001000000000000AA08 /* ConfigurationWatcher.swift in Sources */,
 				EC000001000000000000AA20 /* MessageMatcher.swift in Sources */,
 				B3FB28F224E9BAF7003BA6CB /* PermissionsHelper.swift in Sources */,
 				B3B844CB24DA5D1700DC162A /* DiskAccessDelegate.swift in Sources */,
@@ -776,7 +781,8 @@
 				B38BB6AF24EBB4D8000700F7 /* Configuration.swift in Sources */,
 				EC000001000000000000AA06 /* LLMConfiguration.swift in Sources */,
 				EC000001000000000000AA07 /* LLMModule.swift in Sources */,
-				EC000001000000000000AA0A /* ConfigurationWatcher.swift in Sources */,
+					EC000001000000000000AA32 /* ConfigurationApplier.swift in Sources */,
+					EC000001000000000000AA0A /* ConfigurationWatcher.swift in Sources */,
 				EC000001000000000000AA22 /* MessageMatcher.swift in Sources */,
 				B3B844C924D92D1500DC162A /* ContactHelper.swift in Sources */,
 				B3B844C824D92C2200DC162A /* DatabaseHandler.swift in Sources */,
