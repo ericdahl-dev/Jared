@@ -104,14 +104,15 @@ class CoreModule: RoutingModule {
             textToSend = parameters[3...(parameters.count - 1)].joined(separator: ",")
         }
         
-        //Go through the repeat loop...
-        for _ in 1...repeatNum {
-            sender.send(textToSend, to: message.RespondTo())
-            Thread.sleep(forTimeInterval: Double(delay))
+        //Go through the repeat loop asynchronously
+        Task { [weak self] in
+            guard let self = self else { return }
+            for _ in 1...repeatNum {
+                self.sender.send(textToSend, to: message.RespondTo())
+                try? await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000_000)
+            }
+            self.currentSends[message.sender.handle] = (self.currentSends[message.sender.handle] ?? 0) - 1
         }
-        
-        //Decrement the concurrent send counter for this user
-        currentSends[message.sender.handle] = (currentSends[message.sender.handle] ?? 0) - 1
     }
     
 
