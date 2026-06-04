@@ -45,16 +45,16 @@ class DatabaseHandler {
     
     var db: OpaquePointer?
     var querySinceID: String?
-    var shouldExitThread = false
     var refreshSeconds = 5.0
     var statement: OpaquePointer? = nil
     var router: RouterDelegate?
     private var walSource: DispatchSourceFileSystemObject?
-    private let walSemaphore = DispatchSemaphore(value: 0)
+    private var walContinuation: AsyncStream<Void>.Continuation?
+    private var backgroundTask: Task<Void, Never>?
 
     /// Triggers an immediate poll, bypassing the refresh interval. Used in tests.
     func triggerImmediateQuery() {
-        walSemaphore.signal()
+        walContinuation?.yield(())
     }
 
     /// Convenience init for testing: routes messages from an injected MessageSource without opening SQLite.
@@ -82,19 +82,22 @@ class DatabaseHandler {
     }
     
     deinit {
-        shouldExitThread = true
-        walSemaphore.signal()
+        backgroundTask?.cancel()
+        walContinuation?.finish()
         walSource?.cancel()
-        if sqlite3_close(db) != SQLITE_OK {
+        if let db = db, sqlite3_close(db) != SQLITE_OK {
             print("error closing database")
         }
-        
         db = nil
     }
     
     func start() {
-        let dispatchQueue = DispatchQueue(label: "Jared Background Thread", qos: .background)
-        dispatchQueue.async(execute: self.backgroundAction)
+        var cont: AsyncStream<Void>.Continuation?
+        let stream = AsyncStream<Void> { cont = $0 }
+        walContinuation = cont
+        backgroundTask = Task.detached(priority: .background) { [weak self] in
+            await self?.backgroundAction(walStream: stream)
+        }
     }
 
     private func startWALWatcher(databaseLocation: URL) {
@@ -117,7 +120,7 @@ class DatabaseHandler {
             queue: DispatchQueue.global(qos: .background)
         )
         source.setEventHandler { [weak self] in
-            self?.walSemaphore.signal()
+            self?.walContinuation?.yield(())
         }
         source.setCancelHandler {
             close(fd)
@@ -126,12 +129,22 @@ class DatabaseHandler {
         walSource = source
     }
 
-    private func backgroundAction() {
-        while shouldExitThread == false {
-            let elapsed = queryNewRecords()
-            // Wait up to refreshSeconds, but wake immediately if WAL changes
-            let deadline = DispatchTime.now() + max(0, refreshSeconds - elapsed)
-            _ = walSemaphore.wait(timeout: deadline)
+    private func backgroundAction(walStream: AsyncStream<Void>) async {
+        var walIterator = walStream.makeAsyncIterator()
+        while !Task.isCancelled {
+            _ = queryNewRecords()
+            // Wait for WAL change OR timeout, whichever comes first
+            let timeoutNs = UInt64(refreshSeconds * 1_000_000_000)
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    try? await Task.sleep(nanoseconds: timeoutNs)
+                }
+                group.addTask {
+                    _ = await walIterator.next()
+                }
+                await group.next()
+                group.cancelAll()
+            }
         }
     }
     

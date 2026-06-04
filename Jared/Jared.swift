@@ -9,12 +9,17 @@
 import Foundation
 import JaredFramework
 
-public class Jared: MessageSender {
-    let queue = OperationQueue()
-    
-    init() {
-        queue.maxConcurrentOperationCount = 1
+/// Actor-isolated send queue — enforces serial execution without OperationQueue.
+private actor SendQueue {
+    func enqueue(_ work: @escaping () -> Void) {
+        work()
     }
+}
+
+public class Jared: MessageSender {
+    private let sendQueue = SendQueue()
+    
+    init() {}
     
     public func send(_ body: String, to recipient: RecipientEntity?) {
         guard var recipient = recipient else {
@@ -51,8 +56,10 @@ public class Jared: MessageSender {
                 scriptPath = Bundle.main.url(forResource: "SendTextSingleBuddy", withExtension: "scpt")?.path
             }
             
-            queue.addOperation {
-                self.executeScript(scriptPath: scriptPath, body: body, recipient: recipient)
+            Task {
+                await sendQueue.enqueue {
+                    self.executeScript(scriptPath: scriptPath, body: body, recipient: recipient)
+                }
             }
         }
         
@@ -65,9 +72,12 @@ public class Jared: MessageSender {
                 scriptPath = Bundle.main.url(forResource: "SendImageSingleBuddy", withExtension: "scpt")?.path
             }
             
-            attachments.forEach{attachment in
-                queue.addOperation {
-                    self.executeScript(scriptPath: scriptPath, body: attachment.filePath, recipient: recipient)
+            attachments.forEach { attachment in
+                let filePath = attachment.filePath
+                Task {
+                    await sendQueue.enqueue {
+                        self.executeScript(scriptPath: scriptPath, body: filePath, recipient: recipient)
+                    }
                 }
             }
         }
@@ -85,4 +95,3 @@ public class Jared: MessageSender {
         task.waitUntilExit()
     }
 }
-
