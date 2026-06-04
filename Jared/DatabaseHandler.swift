@@ -56,6 +56,14 @@ class DatabaseHandler {
     func triggerImmediateQuery() {
         walSemaphore.signal()
     }
+
+    /// Convenience init for testing: routes messages from an injected MessageSource without opening SQLite.
+    init(messageSource: MessageSource, router: RouterDelegate) {
+        self.router = router
+        messageSource.onMessage = { [weak self] message in
+            self?.router?.route(message: message)
+        }
+    }
     
     init(router: RouterDelegate, databaseLocation: URL, diskAccessDelegate: DiskAccessDelegate?) {
         self.router = router

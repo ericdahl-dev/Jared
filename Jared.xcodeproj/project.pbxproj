@@ -39,6 +39,11 @@
 		EC000001000000000000AA44 /* ScheduleModuleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA45 /* ScheduleModuleTests.swift */; };
 		EC000001000000000000AA46 /* PersistentContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B353946124E64DDE00F9424A /* PersistentContainer.swift */; };
 		EC000001000000000000AA47 /* CoreModule.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = B3F185F524E51C880051C696 /* CoreModule.xcdatamodeld */; };
+		EC000001000000000000AA50 /* MessageSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA53 /* MessageSource.swift */; };
+		EC000001000000000000AA51 /* MessageSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA53 /* MessageSource.swift */; };
+		EC000001000000000000AA54 /* InMemoryMessageSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA57 /* InMemoryMessageSource.swift */; };
+		EC000001000000000000AA55 /* InMemoryMessageSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA57 /* InMemoryMessageSource.swift */; };
+		EC000001000000000000AA58 /* MessageSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA59 /* MessageSourceTests.swift */; };
 		EC000001000000000000AA30 /* ConfigurationApplier.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA33 /* ConfigurationApplier.swift */; };
 		EC000001000000000000AA08 /* ConfigurationWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA10 /* ConfigurationWatcher.swift */; };
 		EC000001000000000000AA09 /* ConfigurationWatcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA11 /* ConfigurationWatcherTests.swift */; };
@@ -194,6 +199,9 @@
 		EC000001000000000000AA04 /* LLMModuleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMModuleTests.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA43 /* ScheduleModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleModule.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA45 /* ScheduleModuleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleModuleTests.swift; sourceTree = "<group>"; };
+		EC000001000000000000AA53 /* MessageSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageSource.swift; sourceTree = "<group>"; };
+		EC000001000000000000AA57 /* InMemoryMessageSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InMemoryMessageSource.swift; sourceTree = "<group>"; };
+		EC000001000000000000AA59 /* MessageSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageSourceTests.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA33 /* ConfigurationApplier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationApplier.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA10 /* ConfigurationWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationWatcher.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA11 /* ConfigurationWatcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationWatcherTests.swift; sourceTree = "<group>"; };
@@ -364,6 +372,7 @@
 				B32DE51424D51F9C00AB3A71 /* RouterTests.swift */,
 				B3B844CF24DA6AC800DC162A /* JaredWebServerTest.swift */,
 				B3B844BF24D8F91900DC162A /* DatabaseHandlerTest.swift */,
+				EC000001000000000000AA59 /* MessageSourceTests.swift */,
 				B319235624DD311B001904BA /* InternalModuleTest.swift */,
 				B3B844C124D8FA7D00DC162A /* DatabaseTestHelper.swift */,
 				B3B844D124DA6B1200DC162A /* Mocks */,
@@ -440,6 +449,8 @@
 				EC000001000000000000AA00 /* LLMConfiguration.swift */,
 				EC000001000000000000AA02 /* LLMModule.swift */,
 				EC000001000000000000AA43 /* ScheduleModule.swift */,
+				EC000001000000000000AA53 /* MessageSource.swift */,
+				EC000001000000000000AA57 /* InMemoryMessageSource.swift */,
 				EC000001000000000000AA33 /* ConfigurationApplier.swift */,
 				EC000001000000000000AA10 /* ConfigurationWatcher.swift */,
 				EC000001000000000000AA23 /* MessageMatcher.swift */,
@@ -757,6 +768,8 @@
 				EC000001000000000000AA01 /* LLMConfiguration.swift in Sources */,
 				EC000001000000000000AA03 /* LLMModule.swift in Sources */,
 					EC000001000000000000AA40 /* ScheduleModule.swift in Sources */,
+					EC000001000000000000AA50 /* MessageSource.swift in Sources */,
+					EC000001000000000000AA54 /* InMemoryMessageSource.swift in Sources */,
 					EC000001000000000000AA30 /* ConfigurationApplier.swift in Sources */,
 					EC000001000000000000AA08 /* ConfigurationWatcher.swift in Sources */,
 				EC000001000000000000AA20 /* MessageMatcher.swift in Sources */,
@@ -792,6 +805,8 @@
 				EC000001000000000000AA06 /* LLMConfiguration.swift in Sources */,
 				EC000001000000000000AA07 /* LLMModule.swift in Sources */,
 					EC000001000000000000AA41 /* ScheduleModule.swift in Sources */,
+				EC000001000000000000AA51 /* MessageSource.swift in Sources */,
+				EC000001000000000000AA55 /* InMemoryMessageSource.swift in Sources */,
 				EC000001000000000000AA46 /* PersistentContainer.swift in Sources */,
 				EC000001000000000000AA47 /* CoreModule.xcdatamodeld in Sources */,
 					EC000001000000000000AA32 /* ConfigurationApplier.swift in Sources */,
@@ -818,6 +833,7 @@
 				EC000001000000000000AA09 /* ConfigurationWatcherTests.swift in Sources */,
 				EC000001000000000000AA21 /* MessageMatcherTests.swift in Sources */,
 				EC000001000000000000AA44 /* ScheduleModuleTests.swift in Sources */,
+				EC000001000000000000AA58 /* MessageSourceTests.swift in Sources */,
 				B3EF1DB02206E4EB00953DE7 /* MessageTests.swift in Sources */,
 				B32DE51C24D552D300AB3A71 /* MockPluginManager.swift in Sources */,
 				B3B844D024DA6AC800DC162A /* JaredWebServerTest.swift in Sources */,
