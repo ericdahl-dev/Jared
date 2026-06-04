@@ -8,10 +8,12 @@ import Foundation
 class ConfigurationWatcher {
     private let configURL: URL
     private let onChange: () -> Void
+    private weak var applier: ConfigurationApplier?
     private var source: DispatchSourceFileSystemObject?
 
-    init(configURL: URL, onChange: @escaping () -> Void) {
+    init(configURL: URL, applier: ConfigurationApplier? = nil, onChange: @escaping () -> Void) {
         self.configURL = configURL
+        self.applier = applier
         self.onChange = onChange
     }
 
@@ -43,13 +45,16 @@ class ConfigurationWatcher {
     }
 
     private func handleChange() {
-        // Re-open after rename/delete (atomic writes replace the file)
         if source?.data.contains(.rename) == true || source?.data.contains(.delete) == true {
             stop()
-            // Small delay to let the new file appear
             DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.05) { [weak self] in
                 self?.start()
             }
+        }
+        if let applier = applier,
+           let data = try? Data(contentsOf: configURL),
+           let config = try? JSONDecoder().decode(ConfigurationFile.self, from: data) {
+            applier.apply(config)
         }
         onChange()
     }
