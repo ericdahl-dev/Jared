@@ -34,6 +34,9 @@
 		EC000001000000000000AA05 /* LLMModuleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA04 /* LLMModuleTests.swift */; };
 		EC000001000000000000AA06 /* LLMConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA00 /* LLMConfiguration.swift */; };
 		EC000001000000000000AA07 /* LLMModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA02 /* LLMModule.swift */; };
+		EC000001000000000000AA08 /* ConfigurationWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA10 /* ConfigurationWatcher.swift */; };
+		EC000001000000000000AA09 /* ConfigurationWatcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA11 /* ConfigurationWatcherTests.swift */; };
+		EC000001000000000000AA0A /* ConfigurationWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA10 /* ConfigurationWatcher.swift */; };
 		B3327DD8220682ED009DD882 /* WebhookTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3327DC722068147009DD882 /* WebhookTests.swift */; };
 		B347A4A224DA766A00E93657 /* MessageRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3A4C61323B867E300B7F009 /* MessageRequest.swift */; };
 		B347A4A624DD0CE500E93657 /* MessageSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = B347A4A324DD0B7400E93657 /* MessageSender.swift */; };
@@ -177,6 +180,8 @@
 		EC000001000000000000AA00 /* LLMConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMConfiguration.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA02 /* LLMModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMModule.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA04 /* LLMModuleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMModuleTests.swift; sourceTree = "<group>"; };
+		EC000001000000000000AA10 /* ConfigurationWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationWatcher.swift; sourceTree = "<group>"; };
+		EC000001000000000000AA11 /* ConfigurationWatcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationWatcherTests.swift; sourceTree = "<group>"; };
 		B3327DC722068147009DD882 /* WebhookTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebhookTests.swift; sourceTree = "<group>"; };
 		B3327DCE22068176009DD882 /* JaredTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JaredTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B3327DD222068176009DD882 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -330,6 +335,7 @@
 			children = (
 				B3327DC722068147009DD882 /* WebhookTests.swift */,
 				EC000001000000000000AA04 /* LLMModuleTests.swift */,
+				EC000001000000000000AA11 /* ConfigurationWatcherTests.swift */,
 				B3EF1DAF2206E4EB00953DE7 /* MessageTests.swift */,
 				B3B844B724D7791700DC162A /* ActionTypeTest.swift */,
 				B347A4AE24DD1CD000E93657 /* GlobalTest.swift */,
@@ -413,6 +419,7 @@
 				B3327DC522066427009DD882 /* WebHookManager.swift */,
 				EC000001000000000000AA00 /* LLMConfiguration.swift */,
 				EC000001000000000000AA02 /* LLMModule.swift */,
+				EC000001000000000000AA10 /* ConfigurationWatcher.swift */,
 				B3C59283224DD17900116ECB /* JaredWebServer.swift */,
 				B35CE7142196AD4E002F52A7 /* DatabaseHandler.swift */,
 				B38BB6B024EBB530000700F7 /* Helpers */,
@@ -726,6 +733,7 @@
 				B3327DC622066427009DD882 /* WebHookManager.swift in Sources */,
 				EC000001000000000000AA01 /* LLMConfiguration.swift in Sources */,
 				EC000001000000000000AA03 /* LLMModule.swift in Sources */,
+				EC000001000000000000AA08 /* ConfigurationWatcher.swift in Sources */,
 				B3FB28F224E9BAF7003BA6CB /* PermissionsHelper.swift in Sources */,
 				B3B844CB24DA5D1700DC162A /* DiskAccessDelegate.swift in Sources */,
 				B332787A1CB2CB1300BBDD3A /* AppDelegate.swift in Sources */,
@@ -756,6 +764,7 @@
 				B38BB6AF24EBB4D8000700F7 /* Configuration.swift in Sources */,
 				EC000001000000000000AA06 /* LLMConfiguration.swift in Sources */,
 				EC000001000000000000AA07 /* LLMModule.swift in Sources */,
+				EC000001000000000000AA0A /* ConfigurationWatcher.swift in Sources */,
 				B3B844C924D92D1500DC162A /* ContactHelper.swift in Sources */,
 				B3B844C824D92C2200DC162A /* DatabaseHandler.swift in Sources */,
 				B3B844C024D8F91900DC162A /* DatabaseHandlerTest.swift in Sources */,
@@ -774,6 +783,7 @@
 				B3B844BA24D77A4900DC162A /* SendStyleTest.swift in Sources */,
 				B3327DD8220682ED009DD882 /* WebhookTests.swift in Sources */,
 				EC000001000000000000AA05 /* LLMModuleTests.swift in Sources */,
+				EC000001000000000000AA09 /* ConfigurationWatcherTests.swift in Sources */,
 				B3EF1DB02206E4EB00953DE7 /* MessageTests.swift in Sources */,
 				B32DE51C24D552D300AB3A71 /* MockPluginManager.swift in Sources */,
 				B3B844D024DA6AC800DC162A /* JaredWebServerTest.swift in Sources */,
