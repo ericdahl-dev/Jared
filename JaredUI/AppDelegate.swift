@@ -41,8 +41,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .appendingPathComponent("Messages").appendingPathComponent("chat.db")
         let viewController = NSApplication.shared.keyWindow?.contentViewController as? ViewController
 		databaseHelper = DatabaseHandler(router: pluginManager.router, databaseLocation: messageDatabaseURL, diskAccessDelegate: viewController)
-        menuBarManager = MenuBarManager(pluginManager: pluginManager)
+		menuBarManager = MenuBarManager(pluginManager: pluginManager)
 
+		let configURL = ConfigurationHelper.getSupportDirectory().appendingPathComponent("config.json")
+		pluginManager.startWatchingConfig(at: configURL)
     }
     
     func applicationWillTerminate(_ aNotification: Notification) {
@@ -53,4 +55,3 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier!)
     }
 }
-
