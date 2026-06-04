@@ -102,6 +102,13 @@ Test helpers in `JaredTests/DatabaseTestHelper.swift` use `scaffold.db` (a real 
 
 The app checks these at launch and stores status in `UserDefaults` under keys in `JaredConstants`.
 
+## GitHub Repository
+
+**Repo**: `ericdahl-dev/Jared` (https://github.com/ericdahl-dev/Jared)
+- Branch protection on `master` — all changes must go through PRs
+- Use `gh pr create --repo ericdahl-dev/Jared` and `gh pr merge --repo ericdahl-dev/Jared`
+- Release process: archive with `JaredUI` scheme → export with Developer ID (team `5HR8E5CWR7`) → notarize with `xcrun notarytool` (keychain profile: `notarytool`) → staple → zip with `ditto -c -k --sequesterRsrc --keepParent`
+
 ## Localization
 
 Localizable strings are in `Jared/en.lproj/Localizable.strings` and `Jared/ja.lproj/Localizable.strings` (Japanese). Use `NSLocalizedString("key")` — no `comment:` parameter in this codebase.
