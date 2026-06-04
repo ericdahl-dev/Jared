@@ -10,11 +10,11 @@ import Foundation
 import JaredFramework
 
 class Router : RouterDelegate {
-    var pluginManager: PluginManagerDelegate
+    var pluginManager: RouteProvider
     var messageDelegates: [MessageDelegate]
     private let matcher = MessageMatcher()
     
-    init(pluginManager: PluginManagerDelegate, messageDelegates: [MessageDelegate]) {
+    init(pluginManager: RouteProvider, messageDelegates: [MessageDelegate]) {
         self.pluginManager = pluginManager
         self.messageDelegates = messageDelegates
     }
