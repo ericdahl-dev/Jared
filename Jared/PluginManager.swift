@@ -9,7 +9,7 @@
 import Foundation
 import JaredFramework
 
-class PluginManager: RouteProvider, PluginController {
+class PluginManager: RouteProvider, PluginController, ConfigurationApplier {
     var FrameworkVersion: String = "J3.0.0"
     private var modules: [RoutingModule] = []
     private var bundles: [Bundle] = []
@@ -35,18 +35,11 @@ class PluginManager: RouteProvider, PluginController {
     }
 
     func startWatchingConfig(at url: URL) {
-        configWatcher = ConfigurationWatcher(configURL: url) { [weak self] in
-            self?.reloadConfig(from: url)
-        }
+        configWatcher = ConfigurationWatcher(configURL: url, applier: self) { }
         configWatcher?.start()
     }
 
-    private func reloadConfig(from url: URL) {
-        guard let jsonData = try? Data(contentsOf: url),
-              let newConfig = try? JSONDecoder().decode(ConfigurationFile.self, from: jsonData) else {
-            NSLog("Config hot-reload: failed to parse config.json, keeping existing config")
-            return
-        }
+    func apply(_ newConfig: ConfigurationFile) {
         let oldPort = config.webServer.port
         config = newConfig
         webHookManager.updateHooks(to: newConfig.webhooks)
