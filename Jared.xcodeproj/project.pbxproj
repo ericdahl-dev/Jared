@@ -24,6 +24,7 @@
 		B32DE51A24D5524300AB3A71 /* Action.swift in Sources */ = {isa = PBXBuildFile; fileRef = B32DE51924D5524300AB3A71 /* Action.swift */; };
 		B32DE51C24D552D300AB3A71 /* MockPluginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B32DE51B24D552D300AB3A71 /* MockPluginManager.swift */; };
 		B332787A1CB2CB1300BBDD3A /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B33278791CB2CB1300BBDD3A /* AppDelegate.swift */; };
+		EC000001000000000000AA0B /* MenuBarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA0C /* MenuBarManager.swift */; };
 		B332787C1CB2CB1300BBDD3A /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B332787B1CB2CB1300BBDD3A /* ViewController.swift */; };
 		B332787E1CB2CB1300BBDD3A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B332787D1CB2CB1300BBDD3A /* Assets.xcassets */; };
 		B33278811CB2CB1300BBDD3A /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B332787F1CB2CB1300BBDD3A /* Main.storyboard */; };
@@ -171,6 +172,7 @@
 		B33278511CB2C94700BBDD3A /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
 		B33278771CB2CB1300BBDD3A /* Jared.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Jared.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B33278791CB2CB1300BBDD3A /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		EC000001000000000000AA0C /* MenuBarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarManager.swift; sourceTree = "<group>"; };
 		B332787B1CB2CB1300BBDD3A /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 		B332787D1CB2CB1300BBDD3A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B33278801CB2CB1300BBDD3A /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
@@ -320,6 +322,7 @@
 			isa = PBXGroup;
 			children = (
 				B33278791CB2CB1300BBDD3A /* AppDelegate.swift */,
+				EC000001000000000000AA0C /* MenuBarManager.swift */,
 				B375A65821EB14470073F09F /* AboutViewController.swift */,
 				B36563EE1F3D68980064B114 /* TouchBarTextFieldExtension.swift */,
 				B332787B1CB2CB1300BBDD3A /* ViewController.swift */,
@@ -737,6 +740,7 @@
 				B3FB28F224E9BAF7003BA6CB /* PermissionsHelper.swift in Sources */,
 				B3B844CB24DA5D1700DC162A /* DiskAccessDelegate.swift in Sources */,
 				B332787A1CB2CB1300BBDD3A /* AppDelegate.swift in Sources */,
+				EC000001000000000000AA0B /* MenuBarManager.swift in Sources */,
 				B3BF17C4244EBF4900CC44C5 /* InternalModule.swift in Sources */,
 				B3BF17C2244EBE9A00CC44C5 /* Router.swift in Sources */,
 				B375A65921EB14470073F09F /* AboutViewController.swift in Sources */,
