@@ -74,6 +74,7 @@
 		B369509524DF224D0027CB1E /* SendImageSingleBuddy.scpt in Resources */ = {isa = PBXBuildFile; fileRef = B37E82801FA85B170069E15D /* SendImageSingleBuddy.scpt */; };
 		B36C8D7F24EA655900C00A99 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = B36C8D7E24EA655900C00A99 /* Configuration.swift */; };
 		B375A65921EB14470073F09F /* AboutViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B375A65821EB14470073F09F /* AboutViewController.swift */; };
+		EC000001000000000000AC01 /* LLMSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AC02 /* LLMSettingsViewController.swift */; };
 		B37E82821FA85B210069E15D /* SendTextSingleBuddy.scpt in Resources */ = {isa = PBXBuildFile; fileRef = B37E82811FA85B210069E15D /* SendTextSingleBuddy.scpt */; };
 		B38BB6AD24EB99BE000700F7 /* Webhook.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3B7E52824EA579600A3FBD1 /* Webhook.swift */; };
 		B38BB6AF24EBB4D8000700F7 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = B36C8D7E24EA655900C00A99 /* Configuration.swift */; };
@@ -224,6 +225,7 @@
 		B369509124DE91760027CB1E /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
 		B36C8D7E24EA655900C00A99 /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
 		B375A65821EB14470073F09F /* AboutViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutViewController.swift; sourceTree = "<group>"; };
+		EC000001000000000000AC02 /* LLMSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMSettingsViewController.swift; sourceTree = "<group>"; };
 		B3774D4E2424AFEB00F02F62 /* JaredDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = JaredDebug.entitlements; sourceTree = "<group>"; };
 		B37E82801FA85B170069E15D /* SendImageSingleBuddy.scpt */ = {isa = PBXFileReference; lastKnownFileType = file; path = SendImageSingleBuddy.scpt; sourceTree = "<group>"; };
 		B37E82811FA85B210069E15D /* SendTextSingleBuddy.scpt */ = {isa = PBXFileReference; lastKnownFileType = file; path = SendTextSingleBuddy.scpt; sourceTree = "<group>"; };
@@ -347,6 +349,7 @@
 				B33278791CB2CB1300BBDD3A /* AppDelegate.swift */,
 				EC000001000000000000AA0C /* MenuBarManager.swift */,
 				B375A65821EB14470073F09F /* AboutViewController.swift */,
+				EC000001000000000000AC02 /* LLMSettingsViewController.swift */,
 				B36563EE1F3D68980064B114 /* TouchBarTextFieldExtension.swift */,
 				B332787B1CB2CB1300BBDD3A /* ViewController.swift */,
 				B332787D1CB2CB1300BBDD3A /* Assets.xcassets */,
@@ -780,6 +783,7 @@
 				B3BF17C4244EBF4900CC44C5 /* InternalModule.swift in Sources */,
 				B3BF17C2244EBE9A00CC44C5 /* Router.swift in Sources */,
 				B375A65921EB14470073F09F /* AboutViewController.swift in Sources */,
+				EC000001000000000000AC01 /* LLMSettingsViewController.swift in Sources */,
 				7F0E931D1D02FC250096BABE /* Global.swift in Sources */,
 				B353946224E64DDE00F9424A /* PersistentContainer.swift in Sources */,
 				B36C8D7F24EA655900C00A99 /* Configuration.swift in Sources */,
