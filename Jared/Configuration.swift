@@ -13,12 +13,27 @@ struct ConfigurationFile: Decodable {
     let webhooks: [Webhook]
     let webServer: WebserverConfiguration
     let llm: LLMConfiguration?
-    
-    init() {
-        routes = [:]
-        webhooks = []
-        webServer = WebserverConfiguration(port: 3000)
-        llm = nil
+
+    init(routes: [String: RouteConfiguration] = [:],
+         webhooks: [Webhook] = [],
+         webServer: WebserverConfiguration = WebserverConfiguration(port: 3000),
+         llm: LLMConfiguration? = nil) {
+        self.routes = routes
+        self.webhooks = webhooks
+        self.webServer = webServer
+        self.llm = llm
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        routes    = (try? c.decodeIfPresent([String: RouteConfiguration].self, forKey: .routes))   ?? [:]
+        webhooks  = (try? c.decodeIfPresent([Webhook].self,                    forKey: .webhooks)) ?? []
+        webServer = (try? c.decodeIfPresent(WebserverConfiguration.self,       forKey: .webServer)) ?? WebserverConfiguration(port: 3000)
+        llm       = try? c.decodeIfPresent(LLMConfiguration.self,              forKey: .llm)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case routes, webhooks, webServer, llm
     }
 }
 
