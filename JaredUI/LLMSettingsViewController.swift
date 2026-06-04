@@ -165,7 +165,7 @@ final class LLMSettingsViewController: NSViewController {
     }
 
     @objc private func openDocs(_ sender: Any) {
-        NSWorkspace.shared.open(URL(string: "https://github.com/ZekeSnider/Jared/blob/master/Documentation/llm.md")!)
+        NSWorkspace.shared.open(URL(string: "https://github.com/ericdahl-dev/Jared/blob/master/Documentation/llm.md")!)
     }
 
     // MARK: - Helpers
