@@ -42,16 +42,19 @@ class LLMModule: RoutingModule {
     }
 
     func handle(_ message: Message) {
-        guard let text = message.getTextBody() else { return }
-        guard !text.hasPrefix("/") else { return }
-        guard !config.apiKey.isEmpty else { return }
+        guard !UserDefaults.standard.bool(forKey: "LLMIsDisabled") else { return }
+        guard let text = message.getTextBody() else { NSLog("LLM: no text body"); return }
+        guard !text.hasPrefix("/") else { NSLog("LLM: skipping command"); return }
+        guard !config.apiKey.isEmpty else { NSLog("LLM: empty apiKey"); return }
 
         let senderHandle = message.sender.handle
+        NSLog("LLM: handling message from %@: %@", senderHandle, text)
 
         lock.lock()
         let last = lastRequestTime[senderHandle]
         let now = Date()
         if let last = last, now.timeIntervalSince(last) < config.rateLimitSeconds {
+            NSLog("LLM: rate limited for %@", senderHandle)
             lock.unlock()
             return
         }
@@ -92,13 +95,20 @@ class LLMModule: RoutingModule {
         request.addValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
 
         session.dataTask(with: request) { data, response, error in
-            guard error == nil,
-                  let data = data,
+            if let error = error {
+                NSLog("LLM request error: %@", error.localizedDescription)
+                completion(nil)
+                return
+            }
+            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+            guard let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let choices = json["choices"] as? [[String: Any]],
                   let first = choices.first,
                   let msg = first["message"] as? [String: Any],
                   let content = msg["content"] as? String else {
+                let body = data.flatMap { String(data: $0, encoding: .utf8) } ?? "nil"
+                NSLog("LLM bad response: status=%d body=%@", status, body)
                 completion(nil)
                 return
             }

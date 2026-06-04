@@ -55,7 +55,10 @@ class PluginManager: RouteProvider, PluginController, ConfigurationApplier {
         modules.append(InternalModule(sender: sender, pluginManager: self))
         modules.append(webHookManager)
         if let llmConfig = config.llm {
+            NSLog("LLM module loaded: provider=%@ model=%@", llmConfig.provider, llmConfig.model)
             modules.append(LLMModule(sender: sender, config: llmConfig, session: .shared))
+        } else {
+            NSLog("LLM module NOT loaded: config.llm is nil")
         }
     }
     
