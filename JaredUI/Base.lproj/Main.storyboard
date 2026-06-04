@@ -419,10 +419,10 @@
                     <window key="window" title="About" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" visibleAtLaunch="NO" frameAutosaveName="" animationBehavior="default" titlebarAppearsTransparent="YES" titleVisibility="hidden" id="qUO-tD-Pqh">
                         <windowStyleMask key="styleMask" titled="YES" closable="YES"/>
                         <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-                        <rect key="contentRect" x="412" y="243" width="480" height="270"/>
+                        <rect key="contentRect" x="412" y="243" width="400" height="520"/>
                         <rect key="screenRect" x="0.0" y="0.0" width="1280" height="777"/>
-                        <value key="minSize" type="size" width="480" height="270"/>
-                        <value key="maxSize" type="size" width="480" height="270"/>
+                        <value key="minSize" type="size" width="400" height="520"/>
+                        <value key="maxSize" type="size" width="400" height="520"/>
                         <connections>
                             <outlet property="delegate" destination="02P-ba-Sor" id="hvQ-Dx-xyM"/>
                         </connections>
@@ -514,10 +514,10 @@ All rights reserved.</string>
                     <window key="window" title="Jared" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" visibleAtLaunch="NO" animationBehavior="default" tabbingMode="disallowed" id="IQv-IB-iLA">
                         <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES"/>
                         <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-                        <rect key="contentRect" x="196" y="240" width="480" height="270"/>
+                        <rect key="contentRect" x="196" y="240" width="400" height="520"/>
                         <rect key="screenRect" x="0.0" y="0.0" width="1440" height="877"/>
-                        <value key="minSize" type="size" width="480" height="270"/>
-                        <value key="maxSize" type="size" width="480" height="270"/>
+                        <value key="minSize" type="size" width="400" height="520"/>
+                        <value key="maxSize" type="size" width="400" height="520"/>
                         <connections>
                             <outlet property="delegate" destination="B8D-0N-5wS" id="Aof-kT-3KK"/>
                         </connections>
@@ -764,7 +764,7 @@ All rights reserved.</string>
                     <window key="window" title="Licenses" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" visibleAtLaunch="NO" frameAutosaveName="" animationBehavior="default" id="McW-1Q-bL4">
                         <windowStyleMask key="styleMask" titled="YES" closable="YES"/>
                         <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-                        <rect key="contentRect" x="163" y="199" width="480" height="270"/>
+                        <rect key="contentRect" x="163" y="199" width="400" height="520"/>
                         <rect key="screenRect" x="0.0" y="0.0" width="1280" height="777"/>
                         <connections>
                             <outlet property="delegate" destination="IQi-b4-MNl" id="JbM-th-h6K"/>
