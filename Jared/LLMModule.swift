@@ -92,13 +92,20 @@ class LLMModule: RoutingModule {
         request.addValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
 
         session.dataTask(with: request) { data, response, error in
-            guard error == nil,
-                  let data = data,
+            if let error = error {
+                NSLog("LLM request error: %@", error.localizedDescription)
+                completion(nil)
+                return
+            }
+            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+            guard let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let choices = json["choices"] as? [[String: Any]],
                   let first = choices.first,
                   let msg = first["message"] as? [String: Any],
                   let content = msg["content"] as? String else {
+                let body = data.flatMap { String(data: $0, encoding: .utf8) } ?? "nil"
+                NSLog("LLM bad response: status=%d body=%@", status, body)
                 completion(nil)
                 return
             }
