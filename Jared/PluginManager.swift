@@ -20,6 +20,7 @@ class PluginManager: PluginManagerDelegate {
     var webHookManager: WebHookManager
     var sender: MessageSender
     public var router: Router!
+    private var configWatcher: ConfigurationWatcher?
     
     init (sender: MessageSender, configuration: ConfigurationFile, pluginDir: URL) {
         self.sender = sender
@@ -32,7 +33,29 @@ class PluginManager: PluginManagerDelegate {
         loadPlugins()
         addInternalModules()
     }
-    
+
+    func startWatchingConfig(at url: URL) {
+        configWatcher = ConfigurationWatcher(configURL: url) { [weak self] in
+            self?.reloadConfig(from: url)
+        }
+        configWatcher?.start()
+    }
+
+    private func reloadConfig(from url: URL) {
+        guard let jsonData = try? Data(contentsOf: url),
+              let newConfig = try? JSONDecoder().decode(ConfigurationFile.self, from: jsonData) else {
+            NSLog("Config hot-reload: failed to parse config.json, keeping existing config")
+            return
+        }
+        let oldPort = config.webServer.port
+        config = newConfig
+        webHookManager.updateHooks(to: newConfig.webhooks)
+        if newConfig.webServer.port != oldPort {
+            NSLog("Config hot-reload: port changed to %d — restart required for port rebind", newConfig.webServer.port)
+        }
+        NSLog("Config hot-reload: configuration reloaded")
+    }
+
     private func addInternalModules() {
         modules.append(CoreModule(sender: sender))
         modules.append(InternalModule(sender: sender, pluginManager: self))
