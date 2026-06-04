@@ -51,6 +51,7 @@ class PluginManager: RouteProvider, PluginController, ConfigurationApplier {
 
     private func addInternalModules() {
         modules.append(CoreModule(sender: sender))
+        modules.append(ScheduleModule(sender: sender))
         modules.append(InternalModule(sender: sender, pluginManager: self))
         modules.append(webHookManager)
         if let llmConfig = config.llm {

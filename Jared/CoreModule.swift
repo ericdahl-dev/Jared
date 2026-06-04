@@ -11,41 +11,12 @@ import Cocoa
 import JaredFramework
 import Contacts
 
-enum IntervalType: String {
-    case Minute
-    case Hour
-    case Day
-    case Week
-    case Month
-}
-
-let intervalSeconds: [IntervalType: Double] =
-    [
-        .Minute: 60.0,
-        .Hour: 3600.0,
-        .Day: 86400.0,
-        .Week: 604800.0,
-        .Month: 2592000.0
-    ]
-
 class CoreModule: RoutingModule {
     var description: String = NSLocalizedString("CoreDescription")
     var routes: [Route] = []
+    var sender: MessageSender
     let MAXIMUM_CONCURRENT_SENDS = 3
     var currentSends: [String: Int] = [:]
-    let scheduleCheckInterval = 30.0 * 60.0
-    var sender: MessageSender
-    var timer: Timer!
-    
-    var persistentContainer: PersistentContainer = {
-        let container = PersistentContainer(name: "CoreModule")
-        container.loadPersistentStores { description, error in
-            if let error = error {
-                fatalError("Unable to load persistent stores: \(error)")
-            }
-        }
-        return container
-    }()
     
     required public init(sender: MessageSender) {
         self.sender = sender
@@ -64,21 +35,13 @@ class CoreModule: RoutingModule {
         
         let name = Route(name: "/name", comparisons: [.startsWith: ["/name"]], call: {[weak self] in self?.changeName($0)}, description: "Change what Jared calls you", parameterSyntax: "/name,[your preferred name]")
         
-        let schedule = Route(name: "/schedule", comparisons: [.startsWith: ["/schedule"]], call: {[weak self] in self?.schedule($0)}, description: NSLocalizedString("scheduleDescription"), parameterSyntax: "Must be one of these type of inputs: /schedule,add,1,Week,5,full Message\n/schedule,delete,1\n/schedule,list")
         
         let barf = Route(name: "/barf", comparisons: [.startsWith: ["/barf"]], call: {[weak self] in self?.barf($0)}, description: NSLocalizedString("barfDescription"))
         
-        routes = [ping, thankYou, version, send, whoami, name, schedule, barf]
+        routes = [ping, thankYou, version, send, whoami, name, barf]
         
-        //Launch background thread that will check for scheduled messages to send
-        timer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true, block: {[weak self] (theTimer) in
-            self?.scheduleThread()
-        })
     }
     
-    deinit {
-        timer.invalidate()
-    }
     
     
     func pingCall(_ incoming: Message) -> Void {
@@ -151,114 +114,8 @@ class CoreModule: RoutingModule {
         currentSends[message.sender.handle] = (currentSends[message.sender.handle] ?? 0) - 1
     }
     
-    @objc func scheduleThread() {
-        let posts = getPendingPosts()
-        
-        //Loop over all posts
-        for post in posts {
-            guard let handle = post.handle, let text = post.text else {
-                continue
-            }
-            
-            let recipient = AbstractRecipient(handle: handle)
-            sender.send(text, to: recipient)
-            bumpPost(post: post)
-        }
-    }
-    
-    func schedule(_ message: Message) {
-        // /schedule,add,1,Week,5,full Message
-        // /schedule,delete,1
-        // /schedule,list
-        guard let parameters = message.getTextBody()?.components(separatedBy: ",") else {
-            return sender.send("Inappropriate input type", to:message.RespondTo())
-        }
-        
-        guard parameters.count > 1 else {
-            return sender.send("More parameters required.", to: message.RespondTo())
-        }
-        
-        switch parameters[1] {
-        case "add":
-            guard parameters.count > 5 else {
-                return sender.send("Incorrect number of parameters specified.", to: message.RespondTo())
-            }
 
-            guard let sendIntervalNumber = Int(parameters[2]) else {
-                return sender.send("Send interval number must be an integer.", to: message.RespondTo())
-            }
 
-            guard let sendIntervalType = IntervalType(rawValue: parameters[3]) else {
-                return sender.send("Send interval type must be a valid input (hour, day, week, month).", to: message.RespondTo())
-            }
-
-            guard let sendTimes = Int(parameters[4]) else {
-                return sender.send("Send times must be an integer.", to: message.RespondTo())
-            }
-
-            let sendMessage = parameters[5]
-
-            guard let respondToHandle = message.RespondTo()?.handle else {
-                return
-            }
-
-            let post = NSEntityDescription.insertNewObject(forEntityName: "SchedulePost", into:  persistentContainer.viewContext) as! SchedulePost
-            post.sendIntervalNumber = Int64(sendIntervalNumber)
-            post.sendNumberTimes = Int64(sendTimes)
-            post.sendIntervalType = sendIntervalType.rawValue
-            post.currentSendCount = 0
-            post.text = sendMessage
-            post.handle = respondToHandle
-            post.startDate = Date()
-            post.sendNext = getNextSendTime(number: sendIntervalNumber, type: sendIntervalType)
-            
-            persistentContainer.saveContext()
-            sender.send("Your post has been succesfully scheduled.", to: message.RespondTo())
-            break
-        case "delete":
-            guard let respondHandle = message.RespondTo()?.handle else {
-                return
-            }
-            guard parameters.count > 2 else {
-                return sender.send("The second parameter must be a valid id.", to: message.RespondTo())
-            }
-
-            guard let deleteID = Int(parameters[2]) else {
-                return sender.send("The delete ID must be an integer.", to: message.RespondTo())
-            }
-
-            guard deleteID > 0 else {
-                return sender.send("The delete ID must be an positive integer.", to: message.RespondTo())
-            }
-
-            let posts = getPosts(for: respondHandle)
-            guard posts.count >= deleteID else {
-                return sender.send("The specified post ID is not valid.", to: message.RespondTo())
-            }
-
-            persistentContainer.viewContext.delete(posts[deleteID - 1])
-            persistentContainer.saveContext()
-            sender.send("The specified scheduled post has been deleted.", to: message.RespondTo())
-
-            break
-        case "list":
-            guard let respondHandle = message.RespondTo()?.handle else {
-                return
-            }
-            let posts = getPosts(for: respondHandle)
-
-            var sendMessage = "\(message.sender.givenName ?? "Hello"), you have \(posts.count) posts scheduled."
-            for (index, post) in posts.enumerated() {
-                sendMessage += "\n\(index + 1): Send a message every \(post.sendIntervalNumber) \(post.sendIntervalType!)(s) \(post.sendNumberTimes) time(s), starting on \(post.startDate!.description(with: Locale.current))."
-            }
-            sender.send(sendMessage, to: message.RespondTo())
-            break
-        default:
-            sender.send("Invalid schedule command type. Must be add, delete, or list", to: message.RespondTo())
-            break
-        }
-    }
-    
     func changeName(_ message: Message) {
         guard let parsedMessage = message.getTextParameters() else {
             return sender.send("Inappropriate input type", to:message.RespondTo())
@@ -323,42 +180,8 @@ class CoreModule: RoutingModule {
         }
     }
     
-    private func getNextSendTime(number: Int, type: IntervalType) -> Date {
-        return Date().addingTimeInterval(Double(number) * (intervalSeconds[type] ?? 0))
-    }
-    
-    private func getPosts(for handle: String) -> [SchedulePost] {
-        let postRequest:NSFetchRequest<SchedulePost> = SchedulePost.fetchRequest()
-        let sortDescriptor = NSSortDescriptor(key: "startDate", ascending: false)
-        postRequest.sortDescriptors = [sortDescriptor]
-        postRequest.predicate = NSPredicate(format: "handle == %@", handle)
 
-        do {
-            return try persistentContainer.viewContext.fetch(postRequest)
-        } catch {
-            return []
-        }
-    }
-    
-    private func getPendingPosts() -> [SchedulePost] {
-        let postRequest:NSFetchRequest<SchedulePost> = SchedulePost.fetchRequest()
-        postRequest.predicate = NSPredicate(format: "sendNext <= %@", NSDate())
 
-        do {
-            return try persistentContainer.viewContext.fetch(postRequest)
-        } catch {
-            return []
-        }
-    }
-    
-    private func bumpPost(post: SchedulePost) {
-        post.currentSendCount += 1
-        
-        if (post.currentSendCount == post.sendNumberTimes) {
-            persistentContainer.viewContext.delete(post)
-        } else {
-            post.sendNext = getNextSendTime(number: Int(post.sendIntervalNumber), type: IntervalType(rawValue: post.sendIntervalType!)!)
-        }
-        persistentContainer.saveContext()
-    }
+
+
 }
