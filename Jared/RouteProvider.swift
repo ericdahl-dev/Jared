@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  RouteProvider.swift
 //  Jared
 //
 //  Created by Zeke Snider on 4/20/20.
@@ -9,9 +9,12 @@
 import Foundation
 import JaredFramework
 
-protocol PluginManagerDelegate {
+protocol RouteProvider {
     func getAllRoutes() -> [Route]
+    func enabled(routeName: String) -> Bool
+}
+
+protocol PluginController: AnyObject {
     func getAllModules() -> [RoutingModule]
     func reload()
-    func enabled(routeName: String) -> Bool
 }

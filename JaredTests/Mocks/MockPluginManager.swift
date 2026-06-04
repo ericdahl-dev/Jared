@@ -35,7 +35,7 @@ class MockRoute: RoutingModule {
     }
 }
 
-class MockPluginManager: PluginManagerDelegate {
+class MockPluginManager: RouteProvider, PluginController {
     var callCounts = [String: Int]()
     var disabled = [String: Bool]()
     var routingModules = [RoutingModule]()

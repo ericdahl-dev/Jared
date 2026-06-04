@@ -20,7 +20,6 @@
 		B319236224DE76A2001904BA /* JaredUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B319236124DE76A2001904BA /* JaredUITests.swift */; };
 		B32DE51524D51F9C00AB3A71 /* RouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B32DE51424D51F9C00AB3A71 /* RouterTests.swift */; };
 		B32DE51624D522DA00AB3A71 /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BF17C1244EBE9A00CC44C5 /* Router.swift */; };
-		B32DE51824D5231800AB3A71 /* PluginManagerDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BF17C7244EC89200CC44C5 /* PluginManagerDelegate.swift */; };
 		B32DE51A24D5524300AB3A71 /* Action.swift in Sources */ = {isa = PBXBuildFile; fileRef = B32DE51924D5524300AB3A71 /* Action.swift */; };
 		B32DE51C24D552D300AB3A71 /* MockPluginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B32DE51B24D552D300AB3A71 /* MockPluginManager.swift */; };
 		B332787A1CB2CB1300BBDD3A /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B33278791CB2CB1300BBDD3A /* AppDelegate.swift */; };
@@ -91,7 +90,8 @@
 		B3BF17C2244EBE9A00CC44C5 /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BF17C1244EBE9A00CC44C5 /* Router.swift */; };
 		B3BF17C4244EBF4900CC44C5 /* InternalModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BF17C3244EBF4900CC44C5 /* InternalModule.swift */; };
 		B3BF17C6244EC47700CC44C5 /* MessageDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BF17C5244EC47700CC44C5 /* MessageDelegate.swift */; };
-		B3BF17C8244ECC0E00CC44C5 /* PluginManagerDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BF17C7244EC89200CC44C5 /* PluginManagerDelegate.swift */; };
+		EC000001000000000000AB01 /* RouteProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AB00 /* RouteProvider.swift */; };
+		EC000001000000000000AB02 /* RouteProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AB00 /* RouteProvider.swift */; };
 		B3BF17CA244FDA3F00CC44C5 /* MessageDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BF17C5244EC47700CC44C5 /* MessageDelegate.swift */; };
 		B3C59284224DD17900116ECB /* JaredWebServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3C59283224DD17900116ECB /* JaredWebServer.swift */; };
 		B3EF1DA02206849000953DE7 /* WebHookManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3327DC522066427009DD882 /* WebHookManager.swift */; };
@@ -226,7 +226,7 @@
 		B3BF17C1244EBE9A00CC44C5 /* Router.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Router.swift; sourceTree = "<group>"; };
 		B3BF17C3244EBF4900CC44C5 /* InternalModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InternalModule.swift; sourceTree = "<group>"; };
 		B3BF17C5244EC47700CC44C5 /* MessageDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageDelegate.swift; sourceTree = "<group>"; };
-		B3BF17C7244EC89200CC44C5 /* PluginManagerDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginManagerDelegate.swift; sourceTree = "<group>"; };
+		EC000001000000000000AB00 /* RouteProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteProvider.swift; sourceTree = "<group>"; };
 		B3C59283224DD17900116ECB /* JaredWebServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JaredWebServer.swift; sourceTree = "<group>"; };
 		B3EF1DA3220687DD00953DE7 /* URLProtocolMock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLProtocolMock.swift; sourceTree = "<group>"; };
 		B3EF1DA52206DFEA00953DE7 /* Route.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Route.swift; sourceTree = "<group>"; };
@@ -458,7 +458,7 @@
 				B3B844C324D9287F00DC162A /* RouterDelegate.swift */,
 				B3BF17C5244EC47700CC44C5 /* MessageDelegate.swift */,
 				B3B844CA24DA5D1700DC162A /* DiskAccessDelegate.swift */,
-				B3BF17C7244EC89200CC44C5 /* PluginManagerDelegate.swift */,
+				EC000001000000000000AB00 /* RouteProvider.swift */,
 			);
 			name = Delegates;
 			sourceTree = "<group>";
@@ -720,7 +720,7 @@
 			files = (
 				B30578D324F1927D00C43037 /* ConfigurationHelper.swift in Sources */,
 				B347A4A724DD0FCF00E93657 /* Jared.swift in Sources */,
-				B3BF17C8244ECC0E00CC44C5 /* PluginManagerDelegate.swift in Sources */,
+				EC000001000000000000AB01 /* RouteProvider.swift in Sources */,
 				B3A4C61423B867E300B7F009 /* MessageRequest.swift in Sources */,
 				B39A65E01CC1FB1B003E26B0 /* PluginManager.swift in Sources */,
 				B3BBA7D11CB3284A00E1749C /* CoreModule.swift in Sources */,
@@ -768,7 +768,7 @@
 				B3B844C924D92D1500DC162A /* ContactHelper.swift in Sources */,
 				B3B844C824D92C2200DC162A /* DatabaseHandler.swift in Sources */,
 				B3B844C024D8F91900DC162A /* DatabaseHandlerTest.swift in Sources */,
-				B32DE51824D5231800AB3A71 /* PluginManagerDelegate.swift in Sources */,
+				EC000001000000000000AB02 /* RouteProvider.swift in Sources */,
 				B3B7E52524EA00BC00A3FBD1 /* JaredConstants.swift in Sources */,
 				B32DE51624D522DA00AB3A71 /* Router.swift in Sources */,
 				B3BF17CA244FDA3F00CC44C5 /* MessageDelegate.swift in Sources */,

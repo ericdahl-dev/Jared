@@ -9,7 +9,7 @@
 import Foundation
 import JaredFramework
 
-class PluginManager: PluginManagerDelegate {
+class PluginManager: RouteProvider, PluginController {
     var FrameworkVersion: String = "J3.0.0"
     private var modules: [RoutingModule] = []
     private var bundles: [Bundle] = []
