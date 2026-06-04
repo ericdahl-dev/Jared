@@ -42,16 +42,19 @@ class LLMModule: RoutingModule {
     }
 
     func handle(_ message: Message) {
-        guard let text = message.getTextBody() else { return }
-        guard !text.hasPrefix("/") else { return }
-        guard !config.apiKey.isEmpty else { return }
+        guard !UserDefaults.standard.bool(forKey: "LLMIsDisabled") else { return }
+        guard let text = message.getTextBody() else { NSLog("LLM: no text body"); return }
+        guard !text.hasPrefix("/") else { NSLog("LLM: skipping command"); return }
+        guard !config.apiKey.isEmpty else { NSLog("LLM: empty apiKey"); return }
 
         let senderHandle = message.sender.handle
+        NSLog("LLM: handling message from %@: %@", senderHandle, text)
 
         lock.lock()
         let last = lastRequestTime[senderHandle]
         let now = Date()
         if let last = last, now.timeIntervalSince(last) < config.rateLimitSeconds {
+            NSLog("LLM: rate limited for %@", senderHandle)
             lock.unlock()
             return
         }

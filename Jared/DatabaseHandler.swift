@@ -223,10 +223,14 @@ class DatabaseHandler {
     /// Apple moved message text from the `text` column to `attributedBody` in macOS Ventura/Sonoma.
     private func extractAttributedBodyText(for sqlStatement: OpaquePointer?, at column: Int32) -> String? {
         let byteCount = sqlite3_column_bytes(sqlStatement, column)
-        guard byteCount > 0, let bytes = sqlite3_column_blob(sqlStatement, column) else { return nil }
+        guard byteCount > 0, let bytes = sqlite3_column_blob(sqlStatement, column) else {
+            NSLog("extractAttributedBodyText: no blob at col %d", column)
+            return nil
+        }
         let data = Data(bytes: bytes, count: Int(byteCount))
         let obj: Any? = NSUnarchiver.unarchiveObject(with: data)
             ?? (try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSAttributedString.self, from: data))
+        NSLog("extractAttributedBodyText: byteCount=%d obj=%@", byteCount, obj != nil ? "non-nil" : "nil")
         guard let attributed = obj as? NSAttributedString else { return nil }
         let text = attributed.string
         return text.isEmpty ? nil : text
@@ -284,6 +288,7 @@ class DatabaseHandler {
         while sqlite3_step(statement) == SQLITE_ROW {
             var senderHandleOptional = unwrapStringColumn(for: statement, at: 0)
             let rawText = unwrapStringColumn(for: statement, at: 1)
+            NSLog("rawText=%@ isEmpty=%d", rawText ?? "nil", rawText?.isEmpty ?? true ? 1 : 0)
             let textOptional = (rawText?.isEmpty == false ? rawText : nil) ?? extractAttributedBodyText(for: statement, at: 13)
             let rowID = unwrapStringColumn(for: statement, at: 2)
             let roomName = unwrapStringColumn(for: statement, at: 3)
@@ -299,12 +304,16 @@ class DatabaseHandler {
             NSLog("Processing rowID=%@", rowID ?? "nil")
             
             querySinceID = rowID;
+
+            guard !isFromMe else { continue }
             
-            if (senderHandleOptional == nil && isFromMe == true && roomName != nil) {
-                senderHandleOptional = destinationCallerId
+            if senderHandleOptional == nil {
+                let raw = destinationCallerId ?? destinationOptional
+                senderHandleOptional = raw?.hasPrefix("mailto:") == true ? String(raw!.dropFirst(7)) : raw
             }
             
             guard let senderHandle = senderHandleOptional, let text = textOptional, let destination = destinationOptional else {
+                NSLog("guard failed: sender=%@ text=%@ dest=%@", senderHandleOptional ?? "nil", textOptional ?? "nil", destinationOptional ?? "nil")
                 continue
             }
             
@@ -327,6 +336,7 @@ class DatabaseHandler {
             let message = Message(body: TextBody(text), date: Date(timeIntervalSince1970: epochDate), sender: sender, recipient: recipient, guid: guid, attachments: hasAttachment ? retrieveAttachments(forMessage: rowID ?? "") : [],
                 sendStyle: sendStyle, associatedMessageType: Int(associatedMessageType), associatedMessageGUID: associatedMessageGUID)
             
+            NSLog("routing text=%@ sender=%@", text, cleanSenderHandle)
             router?.route(message: message)
         }
         
