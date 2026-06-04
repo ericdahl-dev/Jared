@@ -31,8 +31,10 @@ struct MessageMatcher {
                 }
 
             case .contains:
-                for v in values where lower.contains(v.lowercased()) {
-                    return message
+                for v in values {
+                    if v.isEmpty || lower.contains(v.lowercased()) {
+                        return message
+                    }
                 }
 
             case .is:

@@ -32,6 +32,7 @@ class ViewController: NSViewController, DiskAccessDelegate {
     private var jaredRow: StatusRowView!
     private var diskRow: StatusRowView!
     private var apiRow: StatusRowView!
+    private var llmRow: StatusRowView!
     private var contactsRow: StatusRowView!
     private var sendRow: StatusRowView!
 
@@ -39,6 +40,7 @@ class ViewController: NSViewController, DiskAccessDelegate {
     private let observeKeys = [
         JaredConstants.jaredIsDisabled,
         JaredConstants.restApiIsDisabled,
+        JaredConstants.llmIsDisabled,
         JaredConstants.contactsAccess,
         JaredConstants.sendMessageAccess,
         JaredConstants.fullDiskAccess
@@ -144,11 +146,14 @@ class ViewController: NSViewController, DiskAccessDelegate {
         jaredRow    = StatusRowView(icon: "bubble.left.fill",   iconColor: .systemGreen,  title: "Jared")
         diskRow     = StatusRowView(icon: "internaldrive.fill",  iconColor: .systemBlue,   title: "Full disk access")
         apiRow      = StatusRowView(icon: "network",             iconColor: .systemIndigo,  title: "REST API")
+        llmRow      = StatusRowView(icon: "brain",                iconColor: .systemTeal,    title: "LLM")
         contactsRow = StatusRowView(icon: "person.fill",         iconColor: .systemOrange, title: "Contacts")
         sendRow     = StatusRowView(icon: "envelope.fill",       iconColor: .systemPurple, title: "Messages automation")
 
         apiRow.actionButton.target      = self
         apiRow.actionButton.action      = #selector(EnableDisableRestApiAction(_:))
+        llmRow.actionButton.target      = self
+        llmRow.actionButton.action      = #selector(EnableDisableLLMAction(_:))
         contactsRow.actionButton.target = self
         contactsRow.actionButton.action = #selector(contactsButtonAction(_:))
         sendRow.actionButton.target     = self
@@ -159,7 +164,7 @@ class ViewController: NSViewController, DiskAccessDelegate {
         let rows: [NSView] = [
             sectionHeader("Status"),   jaredRow, diskRow,
             separator(),
-            sectionHeader("Services"), apiRow,
+            sectionHeader("Services"), apiRow, llmRow,
             separator(),
             sectionHeader("Permissions"), contactsRow, sendRow,
             separator(),
@@ -188,7 +193,7 @@ class ViewController: NSViewController, DiskAccessDelegate {
             content.widthAnchor.constraint(equalTo: scroll.widthAnchor),
         ])
 
-        for row in [jaredRow, diskRow, apiRow, contactsRow, sendRow] as [NSView] {
+        for row in [jaredRow, diskRow, apiRow, llmRow, contactsRow, sendRow] as [NSView] {
             row.leadingAnchor.constraint(equalTo: stack.leadingAnchor).isActive = true
             row.trailingAnchor.constraint(equalTo: stack.trailingAnchor).isActive = true
         }
@@ -320,6 +325,14 @@ class ViewController: NSViewController, DiskAccessDelegate {
                 self.EnableDisableRestApiUiButton?.title = "Disable API"
             }
 
+            // LLM row
+            let llmOff = self.defaults.bool(forKey: JaredConstants.llmIsDisabled)
+            if llmOff {
+                self.llmRow?.update(statusText: "Disabled", state: .off, buttonTitle: "Enable")
+            } else {
+                self.llmRow?.update(statusText: "Enabled", state: .on, buttonTitle: "Disable")
+            }
+
             // Contacts row
             switch CNAuthorizationStatus(rawValue: self.defaults.integer(forKey: JaredConstants.contactsAccess)) {
             case .authorized:
@@ -386,6 +399,10 @@ class ViewController: NSViewController, DiskAccessDelegate {
 
     @IBAction func EnableDisableRestApiAction(_ sender: Any) {
         defaults.set(!defaults.bool(forKey: JaredConstants.restApiIsDisabled), forKey: JaredConstants.restApiIsDisabled)
+    }
+
+    @IBAction func EnableDisableLLMAction(_ sender: Any) {
+        defaults.set(!defaults.bool(forKey: JaredConstants.llmIsDisabled), forKey: JaredConstants.llmIsDisabled)
     }
 
     @IBAction func contactsButtonAction(_ sender: Any) {

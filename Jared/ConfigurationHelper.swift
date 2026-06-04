@@ -19,10 +19,15 @@ struct ConfigurationHelper {
         //Read the JSON config file
         var config: ConfigurationFile
         let jsonData = try? NSData(contentsOfFile: configPath.path, options: .mappedIfSafe)
-        if let parsedConfig = try? JSONDecoder().decode(ConfigurationFile.self, from: jsonData! as Data) {
+        if let data = jsonData, let parsedConfig = try? JSONDecoder().decode(ConfigurationFile.self, from: data as Data) {
+            NSLog("Config loaded: llm=%@", parsedConfig.llm != nil ? "yes" : "nil")
             config = parsedConfig
         } else {
-            NSLog("Unable to parse configuration file, using default")
+            if let data = jsonData, let raw = String(data: data as Data, encoding: .utf8) {
+                NSLog("Unable to parse configuration file: %@", raw)
+            } else {
+                NSLog("Unable to parse configuration file, using default")
+            }
             config = ConfigurationFile()
         }
         
