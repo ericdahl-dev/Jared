@@ -66,14 +66,14 @@ class InternalModule: RoutingModule {
     var description: String = NSLocalizedString("InternalModule")
     var routes: [Route] = []
     var defaults: UserDefaults
-    var pluginManager: PluginManagerDelegate?
+    var pluginManager: PluginController?
     var sender: MessageSender
     
     required public convenience init(sender: MessageSender) {
         self.init(sender: sender, pluginManager: nil)
     }
     
-    init(sender: MessageSender, pluginManager: PluginManagerDelegate?) {
+    init(sender: MessageSender, pluginManager: PluginController?) {
         self.sender = sender
         self.pluginManager = pluginManager
         defaults = UserDefaults.standard
@@ -116,7 +116,8 @@ class InternalModule: RoutingModule {
     }
     
     private func singleDocumentation(_ routeName: String) -> String {
-        return pluginManager!.getAllRoutes()
+        return pluginManager!.getAllModules()
+            .flatMap { $0.routes }
             .first(where: { route in route.name.lowercased() == routeName.lowercased() })?
             .fullDescription ?? ""
     }
