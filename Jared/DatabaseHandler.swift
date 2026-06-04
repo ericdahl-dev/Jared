@@ -36,7 +36,8 @@ class DatabaseHandler {
 			message.cache_has_attachments,
 			message.expressive_send_style_id,
 			message.associated_message_type,
-			message.associated_message_guid, message.guid, destination_caller_id
+			message.associated_message_guid, message.guid, destination_caller_id,
+			message.attributedBody
 			FROM message LEFT JOIN handle
 			ON message.handle_id = handle.ROWID
 			WHERE message.ROWID > ? ORDER BY message.ROWID ASC
@@ -217,6 +218,17 @@ class DatabaseHandler {
             return nil
         }
     }
+
+    /// Decodes the NSAttributedString blob in `attributedBody` to extract plain text.
+    /// Apple moved message text from the `text` column to `attributedBody` in macOS Ventura/Sonoma.
+    private func extractAttributedBodyText(for sqlStatement: OpaquePointer?, at column: Int32) -> String? {
+        let byteCount = sqlite3_column_bytes(sqlStatement, column)
+        guard byteCount > 0, let bytes = sqlite3_column_blob(sqlStatement, column) else { return nil }
+        let data = Data(bytes: bytes, count: Int(byteCount))
+        guard let attributed = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSAttributedString.self, from: data) else { return nil }
+        let text = attributed.string
+        return text.isEmpty ? nil : text
+    }
     
     private func retrieveAttachments(forMessage messageID: String) -> [Attachment] {
         var attachmentStatement: OpaquePointer? = nil
@@ -269,7 +281,7 @@ class DatabaseHandler {
         
         while sqlite3_step(statement) == SQLITE_ROW {
             var senderHandleOptional = unwrapStringColumn(for: statement, at: 0)
-            let textOptional = unwrapStringColumn(for: statement, at: 1)
+            let textOptional = unwrapStringColumn(for: statement, at: 1) ?? extractAttributedBodyText(for: statement, at: 13)
             let rowID = unwrapStringColumn(for: statement, at: 2)
             let roomName = unwrapStringColumn(for: statement, at: 3)
             let isFromMe = sqlite3_column_int(statement, 4) == 1
@@ -281,7 +293,7 @@ class DatabaseHandler {
             let associatedMessageGUID = unwrapStringColumn(for: statement, at: 10)
             let guid = unwrapStringColumn(for: statement, at: 11)
             let destinationCallerId = unwrapStringColumn(for: statement, at: 12)
-            NSLog("Processing \(rowID ?? "unknown")")
+            NSLog("Processing rowID=%@", rowID ?? "nil")
             
             querySinceID = rowID;
             
@@ -290,21 +302,23 @@ class DatabaseHandler {
             }
             
             guard let senderHandle = senderHandleOptional, let text = textOptional, let destination = destinationOptional else {
-                break
+                continue
             }
             
-            let buddyName = ContactHelper.RetreiveContact(handle: senderHandle)?.givenName
-            let myName = ContactHelper.RetreiveContact(handle: destination)?.givenName
+            let cleanDestination = destination.hasPrefix("mailto:") ? String(destination.dropFirst(7)) : destination
+            let cleanSenderHandle = senderHandle.hasPrefix("mailto:") ? String(senderHandle.dropFirst(7)) : senderHandle
+            let buddyName = ContactHelper.RetreiveContact(handle: cleanSenderHandle)?.givenName
+            let myName = ContactHelper.RetreiveContact(handle: cleanDestination)?.givenName
             let sender: Person
             let recipient: RecipientEntity
             let group = retrieveGroupInfo(chatID: roomName)
             
             if (isFromMe) {
-                sender = Person(givenName: myName, handle: destination, isMe: true)
-                recipient = group ?? Person(givenName: buddyName, handle: senderHandle, isMe: false)
+                sender = Person(givenName: myName, handle: cleanDestination, isMe: true)
+                recipient = group ?? Person(givenName: buddyName, handle: cleanSenderHandle, isMe: false)
             } else {
-                sender = Person(givenName: buddyName, handle: senderHandle, isMe: false)
-                recipient = group ?? Person(givenName: myName, handle: destination, isMe: true)
+                sender = Person(givenName: buddyName, handle: cleanSenderHandle, isMe: false)
+                recipient = group ?? Person(givenName: myName, handle: cleanDestination, isMe: true)
             }
             
             let message = Message(body: TextBody(text), date: Date(timeIntervalSince1970: epochDate), sender: sender, recipient: recipient, guid: guid, attachments: hasAttachment ? retrieveAttachments(forMessage: rowID ?? "") : [],
