@@ -200,15 +200,19 @@ class ViewController: NSViewController, DiskAccessDelegate {
 
         let reloadBtn  = toolButton("Reload plugins",      icon: "arrow.clockwise", action: #selector(ReloadButtonPressed(_:)))
         let pluginsBtn = toolButton("Open plugins folder", icon: "folder",          action: #selector(OpenPluginsButtonAction(_:)))
+        let llmBtn     = toolButton("Configure LLM…",      icon: "brain",           action: #selector(openLLMSettings(_:)))
 
         container.addSubview(reloadBtn)
         container.addSubview(pluginsBtn)
+        container.addSubview(llmBtn)
         NSLayoutConstraint.activate([
             container.heightAnchor.constraint(equalToConstant: 56),
             reloadBtn.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
             reloadBtn.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             pluginsBtn.leadingAnchor.constraint(equalTo: reloadBtn.trailingAnchor, constant: 8),
             pluginsBtn.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            llmBtn.leadingAnchor.constraint(equalTo: pluginsBtn.trailingAnchor, constant: 8),
+            llmBtn.centerYAnchor.constraint(equalTo: container.centerYAnchor),
         ])
         return container
     }
@@ -415,6 +419,11 @@ class ViewController: NSViewController, DiskAccessDelegate {
 
     @IBAction func ReloadButtonPressed(_ sender: Any) {
         (NSApplication.shared.delegate as? AppDelegate)?.pluginManager.reload()
+    }
+
+    @objc private func openLLMSettings(_ sender: Any) {
+        let vc = LLMSettingsViewController()
+        presentAsSheet(vc)
     }
 
     func displayAccessError() {

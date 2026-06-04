@@ -9,20 +9,27 @@
 			"url": "https://webhook.site/1"
 		},
 		{
-	      "url": "https://webhook.site/2",
-	      "routes": [
-	        {
-	          "name": "/hello",
-	          "description": "a test route",
-	          "parameterSyntax": "/hello",
-	          "comparisons": {
-	            "startsWith": ["/hello"]
-	          }
-	        }
-	      ]
-	    },
+			"url": "https://webhook.site/2",
+			"routes": [
+				{
+					"name": "/hello",
+					"description": "a test route",
+					"parameterSyntax": "/hello",
+					"comparisons": {
+						"startsWith": ["/hello"]
+					}
+				}
+			]
+		}
 	],
 	"webServer": {
 		"port": 3001
+	},
+	"llm": {
+		"provider": "openai",
+		"apiKey": "sk-...",
+		"model": "gpt-4o",
+		"systemPrompt": "You are a helpful assistant.",
+		"rateLimitSeconds": 10.0
 	}
 }
