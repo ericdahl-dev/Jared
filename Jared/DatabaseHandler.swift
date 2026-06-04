@@ -225,7 +225,9 @@ class DatabaseHandler {
         let byteCount = sqlite3_column_bytes(sqlStatement, column)
         guard byteCount > 0, let bytes = sqlite3_column_blob(sqlStatement, column) else { return nil }
         let data = Data(bytes: bytes, count: Int(byteCount))
-        guard let attributed = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSAttributedString.self, from: data) else { return nil }
+        let obj: Any? = NSUnarchiver.unarchiveObject(with: data)
+            ?? (try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSAttributedString.self, from: data))
+        guard let attributed = obj as? NSAttributedString else { return nil }
         let text = attributed.string
         return text.isEmpty ? nil : text
     }
@@ -281,7 +283,8 @@ class DatabaseHandler {
         
         while sqlite3_step(statement) == SQLITE_ROW {
             var senderHandleOptional = unwrapStringColumn(for: statement, at: 0)
-            let textOptional = unwrapStringColumn(for: statement, at: 1) ?? extractAttributedBodyText(for: statement, at: 13)
+            let rawText = unwrapStringColumn(for: statement, at: 1)
+            let textOptional = (rawText?.isEmpty == false ? rawText : nil) ?? extractAttributedBodyText(for: statement, at: 13)
             let rowID = unwrapStringColumn(for: statement, at: 2)
             let roomName = unwrapStringColumn(for: statement, at: 3)
             let isFromMe = sqlite3_column_int(statement, 4) == 1
