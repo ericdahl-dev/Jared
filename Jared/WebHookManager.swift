@@ -20,6 +20,8 @@ class WebHookManager: MessageDelegate, RoutingModule {
     var sender: MessageSender
     var keychain: KeychainAccessor
     var description = "Routes provided by webhooks"
+    /// Base nanosecond unit for retry backoff (2^attempt × base). Override in tests for speed.
+    var retryDelayBase: UInt64 = 1_000_000_000
 
     public init(webhooks: [RichWebhook]?, session: URLSessionConfiguration = .ephemeral,
                 sender: MessageSender, keychain: KeychainAccessor = KeychainStore()) {
@@ -122,7 +124,7 @@ class WebHookManager: MessageDelegate, RoutingModule {
             }
 
             if attempt < maxRetries {
-                let backoffNs = UInt64(pow(2.0, Double(attempt))) * 1_000_000_000
+                let backoffNs = UInt64(pow(2.0, Double(attempt))) * retryDelayBase
                 try? await Task.sleep(nanoseconds: backoffNs)
             }
         }

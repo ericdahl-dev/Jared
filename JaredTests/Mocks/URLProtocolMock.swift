@@ -29,8 +29,14 @@ extension Data {
 class URLProtocolMock: URLProtocol {
     static var testURLs = [URL?: Data]()
     static var matchedDataURLs = [URL]()
-    /// HTTP status code returned for all matched requests. Defaults to 200.
+    /// HTTP status code returned for all requests. Defaults to 200.
     static var responseStatusCode: Int = 200
+    /// Per-call status codes — index 0 = first request, index 1 = second, etc.
+    /// Falls back to responseStatusCode once the sequence is exhausted.
+    static var responseSequence: [Int] = []
+    /// All requests received in order — use .count to verify retry attempts.
+    static var capturedRequests: [URLRequest] = []
+    private static var callCount = 0
 
     override class func canInit(with request: URLRequest) -> Bool {
         return true
@@ -41,10 +47,20 @@ class URLProtocolMock: URLProtocol {
     }
 
     override func startLoading() {
+        URLProtocolMock.capturedRequests.append(request)
+        let idx = URLProtocolMock.callCount
+        let statusCode: Int
+        if idx < URLProtocolMock.responseSequence.count {
+            statusCode = URLProtocolMock.responseSequence[idx]
+        } else {
+            statusCode = URLProtocolMock.responseStatusCode
+        }
+        URLProtocolMock.callCount += 1
+
         if let url = request.url {
             let httpResponse = HTTPURLResponse(
                 url: url,
-                statusCode: URLProtocolMock.responseStatusCode,
+                statusCode: statusCode,
                 httpVersion: "HTTP/1.1",
                 headerFields: nil
             )!
@@ -60,4 +76,13 @@ class URLProtocolMock: URLProtocol {
     }
 
     override func stopLoading() { }
+
+    static func reset() {
+        testURLs = [:]
+        matchedDataURLs = []
+        responseStatusCode = 200
+        responseSequence = []
+        capturedRequests = []
+        callCount = 0
+    }
 }
