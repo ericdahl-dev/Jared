@@ -6,4 +6,6 @@ Welcome to the Jared documentation hub. Here you'll find a glossary of Jared's A
 + [Plugins](plugins.md)
 + [Sample Plugin](SampleModule)
 + [Webhooks](webhooks.md)
++ [n8n Integration](n8n.md)
++ [LLM Integration](llm.md)
 + [REST API](restapi.md)
