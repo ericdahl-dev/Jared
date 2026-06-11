@@ -136,6 +136,7 @@ class ViewController: NSViewController, DiskAccessDelegate {
         let scroll = NSScrollView()
         scroll.hasVerticalScroller = true
         scroll.hasHorizontalScroller = false
+        scroll.horizontalScrollElasticity = .none
         scroll.drawsBackground = false
         scroll.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(scroll)
@@ -189,8 +190,8 @@ class ViewController: NSViewController, DiskAccessDelegate {
             stack.topAnchor.constraint(equalTo: content.topAnchor),
             stack.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: content.bottomAnchor),
-            content.widthAnchor.constraint(equalTo: scroll.widthAnchor),
+            stack.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+            content.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor),
         ])
 
         for row in [jaredRow, diskRow, apiRow, llmRow, contactsRow, sendRow] as [NSView] {
