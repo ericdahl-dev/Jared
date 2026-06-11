@@ -7,57 +7,65 @@
 //
 
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.zekesnider.jared", category: "configuration")
 
 struct ConfigurationHelper {
     static let fileManager = FileManager.default
-    
+
     static func getConfiguration() -> ConfigurationFile {
         let configPath = ConfigurationHelper.getSupportDirectory()
             .appendingPathComponent("config.json")
         ConfigurationHelper.createConfigFileIfNotExists(at: configPath, using: fileManager)
-        
-        //Read the JSON config file
+
         var config: ConfigurationFile
-        let jsonData = try? NSData(contentsOfFile: configPath.path, options: .mappedIfSafe)
-        if let data = jsonData, let parsedConfig = try? JSONDecoder().decode(ConfigurationFile.self, from: data as Data) {
-            NSLog("Config loaded: llm=%@", parsedConfig.llm != nil ? "yes" : "nil")
-            config = parsedConfig
-        } else {
-            if let data = jsonData, let raw = String(data: data as Data, encoding: .utf8) {
-                NSLog("Unable to parse configuration file: %@", raw)
-            } else {
-                NSLog("Unable to parse configuration file, using default")
+        if let data = try? Data(contentsOf: configPath) {
+            do {
+                config = try JSONDecoder().decode(ConfigurationFile.self, from: data)
+                logger.notice("Config loaded from \(configPath.path, privacy: .public)")
+            } catch {
+                logger.error("Failed to parse config.json: \(error.localizedDescription, privacy: .public) — check syntax at https://jsonlint.com")
+                config = ConfigurationFile()
             }
+        } else {
+            logger.error("Could not read config.json at \(configPath.path, privacy: .public)")
             config = ConfigurationFile()
         }
-        
+
         return config
     }
-    
+
     static func getSupportDirectory() -> URL {
         let filemanager = FileManager.default
         let appsupport = filemanager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let supportDir = appsupport.appendingPathComponent("Jared")
-        
+
         try! filemanager.createDirectory(at: supportDir, withIntermediateDirectories: true, attributes: nil)
-        
+
         return supportDir
     }
-    
+
     static func getPluginDirectory() -> URL {
         let supportDir = getSupportDirectory()
             .appendingPathComponent("Plugins")
-        
+
         try! fileManager.createDirectory(at: supportDir, withIntermediateDirectories: true, attributes: nil)
-        
+
         return supportDir
     }
-    
-    //Copy an empty config file if the conig file does not exist
+
     private static func createConfigFileIfNotExists(at path: URL, using fileManager: FileManager) {
-        //Copy an empty config file if the conig file does not exist
-        if !fileManager.fileExists(atPath: path.path) {
-            try! fileManager.copyItem(at: (Bundle.main.resourceURL?.appendingPathComponent("config.json"))!, to: path)
+        guard !fileManager.fileExists(atPath: path.path) else { return }
+        guard let source = Bundle.main.resourceURL?.appendingPathComponent("config.json") else {
+            logger.error("Default config.json missing from app bundle")
+            return
+        }
+        do {
+            try fileManager.copyItem(at: source, to: path)
+            logger.notice("Created default config.json at \(path.path, privacy: .public)")
+        } catch {
+            logger.error("Could not create default config.json: \(error.localizedDescription, privacy: .public)")
         }
     }
 }
