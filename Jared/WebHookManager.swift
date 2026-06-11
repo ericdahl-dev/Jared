@@ -37,12 +37,21 @@ class WebHookManager: MessageDelegate, RoutingModule {
     // MARK: - MessageDelegate
 
     public func didProcess(message: Message) {
-        for webhook in webhooks {
-            // Route-based webhooks fire via Route.call callbacks set up in updateHooks
-            guard (webhook.routes ?? []).isEmpty else {
-                continue
+        let globalWebhooks = webhooks.filter { ($0.routes ?? []).isEmpty }
+        guard !globalWebhooks.isEmpty else { return }
+        Task {
+            await withTaskGroup(of: Void.self) { group in
+                var inFlight = 0
+                for webhook in globalWebhooks {
+                    if inFlight >= 5 {
+                        await group.next()
+                        inFlight -= 1
+                    }
+                    let w = webhook
+                    group.addTask { await self.deliverWebhook(w, message: message) }
+                    inFlight += 1
+                }
             }
-            Task { await self.deliverWebhook(webhook, message: message) }
         }
     }
 
@@ -92,7 +101,7 @@ class WebHookManager: MessageDelegate, RoutingModule {
                 }
 
                 if (200...299).contains(httpResponse.statusCode) {
-                    logger.info("Webhook \(webhook.url, privacy: .public): delivered (attempt \(attempt + 1, privacy: .public), status \(httpResponse.statusCode, privacy: .public))")
+                    logger.notice("Webhook \(webhook.url, privacy: .public): delivered (attempt \(attempt + 1, privacy: .public), status \(httpResponse.statusCode, privacy: .public))")
                     if webhook.mode == .command {
                         guard let decoded = try? JSONDecoder().decode(WebhookResponse.self, from: data) else {
                             logger.warning("Webhook \(webhook.url, privacy: .public): unable to parse command response")
@@ -140,7 +149,7 @@ class WebHookManager: MessageDelegate, RoutingModule {
             return newHook
         }
         self.routes = self.webhooks.flatMap { $0.routes ?? [] }
-        logger.info("Webhooks updated: \(self.webhooks.map { $0.url }.joined(separator: ", "), privacy: .public)")
+        logger.notice("Webhooks updated: \(self.webhooks.map { $0.url }.joined(separator: ", "), privacy: .public)")
     }
 
     private static func createWebhookBody(_ message: Message) -> Data? {
