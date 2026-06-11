@@ -8,17 +8,24 @@
 
 import Foundation
 import JaredFramework
+import os
+import CryptoKit
+
+private let logger = Logger(subsystem: "com.zekesnider.jared", category: "webhooks")
 
 class WebHookManager: MessageDelegate, RoutingModule {
     var urlSession: URLSession
     var webhooks = [RichWebhook]()
     var routes = [Route]()
     var sender: MessageSender
+    var keychain: KeychainAccessor
     var description = "Routes provided by webhooks"
 
-    public init(webhooks: [RichWebhook]?, session: URLSessionConfiguration = .ephemeral, sender: MessageSender) {
+    public init(webhooks: [RichWebhook]?, session: URLSessionConfiguration = .ephemeral,
+                sender: MessageSender, keychain: KeychainAccessor = KeychainStore()) {
         session.timeoutIntervalForResource = 10.0
         self.sender = sender
+        self.keychain = keychain
         urlSession = URLSession(configuration: session)
         updateHooks(to: webhooks)
     }
@@ -43,44 +50,75 @@ class WebHookManager: MessageDelegate, RoutingModule {
 
     func deliverWebhook(_ webhook: RichWebhook, message: Message) async {
         guard let parsedUrl = URL(string: webhook.url) else {
-            print("[ERROR] Webhook \(webhook.url): invalid URL — skipping delivery")
+            logger.error("Webhook \(webhook.url, privacy: .public): invalid URL — skipping delivery")
             return
         }
 
         guard let webhookBody = WebHookManager.createWebhookBody(message) else {
-            print("[ERROR] Webhook \(webhook.url): failed to encode message body")
+            logger.error("Webhook \(webhook.url, privacy: .public): failed to encode message body")
             return
         }
 
-        var request = URLRequest(url: parsedUrl)
-        request.httpMethod = "POST"
-        request.httpBody = webhookBody
-        request.addValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = webhook.effectiveTimeout
+        let deliveryId = UUID().uuidString
+        let maxRetries = webhook.effectiveMaxRetries
 
-        do {
-            let (data, response) = try await urlSession.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse else { return }
+        for attempt in 0...maxRetries {
+            var request = URLRequest(url: parsedUrl)
+            request.httpMethod = "POST"
+            request.httpBody = webhookBody
+            request.addValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+            request.addValue(deliveryId, forHTTPHeaderField: "X-Jared-Delivery-Id")
+            request.addValue(webhook.url, forHTTPHeaderField: "X-Jared-Webhook-Id")
+            request.timeoutInterval = webhook.effectiveTimeout
 
-            guard (200...299).contains(httpResponse.statusCode) else {
-                print("[WARN] Webhook \(webhook.url): unexpected status \(httpResponse.statusCode)")
-                return
+            if webhook.auth != nil {
+                if let secret = keychain.secret(for: webhook.url) {
+                    let key = SymmetricKey(data: Data(secret.utf8))
+                    let sig = HMAC<SHA256>.authenticationCode(for: webhookBody, using: key)
+                    let hexSig = sig.map { String(format: "%02x", $0) }.joined()
+                    request.addValue("sha256=\(hexSig)", forHTTPHeaderField: "X-Jared-Signature")
+                } else {
+                    logger.warning("Webhook \(webhook.url, privacy: .public): auth configured but no Keychain secret found — delivering unsigned")
+                }
             }
 
-            if webhook.mode == .command {
-                guard let decoded = try? JSONDecoder().decode(WebhookResponse.self, from: data) else {
-                    print("[WARN] Webhook \(webhook.url): unable to parse command response")
+            do {
+                let (data, response) = try await urlSession.data(for: request)
+                guard let httpResponse = response as? HTTPURLResponse else { return }
+
+                if (400...499).contains(httpResponse.statusCode) {
+                    logger.warning("Webhook \(webhook.url, privacy: .public): 4xx \(httpResponse.statusCode, privacy: .public) — not retrying")
                     return
                 }
-                if decoded.success, let replyText = decoded.body?.message {
-                    sender.send(replyText, to: message.RespondTo())
-                } else if let decodedError = decoded.error {
-                    print("[WARN] Webhook \(webhook.url): error response: \(decodedError)")
+
+                if (200...299).contains(httpResponse.statusCode) {
+                    logger.info("Webhook \(webhook.url, privacy: .public): delivered (attempt \(attempt + 1, privacy: .public), status \(httpResponse.statusCode, privacy: .public))")
+                    if webhook.mode == .command {
+                        guard let decoded = try? JSONDecoder().decode(WebhookResponse.self, from: data) else {
+                            logger.warning("Webhook \(webhook.url, privacy: .public): unable to parse command response")
+                            return
+                        }
+                        if decoded.success, let replyText = decoded.body?.message {
+                            sender.send(replyText, to: message.RespondTo())
+                        } else if let decodedError = decoded.error {
+                            logger.warning("Webhook \(webhook.url, privacy: .public): error response: \(decodedError, privacy: .public)")
+                        }
+                    }
+                    return
                 }
+
+                logger.warning("Webhook \(webhook.url, privacy: .public): status \(httpResponse.statusCode, privacy: .public) on attempt \(attempt + 1, privacy: .public)")
+            } catch {
+                logger.error("Webhook \(webhook.url, privacy: .public): request failed on attempt \(attempt + 1, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }
-        } catch {
-            print("[ERROR] Webhook \(webhook.url): request failed: \(error.localizedDescription)")
+
+            if attempt < maxRetries {
+                let backoffNs = UInt64(pow(2.0, Double(attempt))) * 1_000_000_000
+                try? await Task.sleep(nanoseconds: backoffNs)
+            }
         }
+
+        logger.error("Webhook \(webhook.url, privacy: .public): all \(maxRetries + 1, privacy: .public) attempt(s) exhausted")
     }
 
     // MARK: - Configuration
@@ -88,6 +126,10 @@ class WebHookManager: MessageDelegate, RoutingModule {
     public func updateHooks(to hooks: [RichWebhook]?) {
         self.webhooks = (hooks ?? []).map { hook in
             var newHook = hook
+            // Persist inline auth.secret to Keychain on first load
+            if let inlineSecret = newHook.auth?.secret {
+                keychain.save(secret: inlineSecret, for: newHook.url)
+            }
             newHook.routes = (newHook.routes ?? []).map { route in
                 var newRoute = route
                 newRoute.call = { [weak self] msg in
@@ -98,7 +140,7 @@ class WebHookManager: MessageDelegate, RoutingModule {
             return newHook
         }
         self.routes = self.webhooks.flatMap { $0.routes ?? [] }
-        print("[INFO] Webhooks updated to: \(self.webhooks.map { $0.url }.joined(separator: ", "))")
+        logger.info("Webhooks updated: \(self.webhooks.map { $0.url }.joined(separator: ", "), privacy: .public)")
     }
 
     private static func createWebhookBody(_ message: Message) -> Data? {
