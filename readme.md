@@ -18,6 +18,18 @@ A powerful and easily extensible iMessage bot. It makes it possible to add chat 
 
 Any pull requests and new GitHub issues are much appreciated! If you would like to develop a plugin for Jared, see the plugin section below. I'm always available on [Twitter](https://twitter.com/zekesnider) if you have any ideas/suggestions.
 
+## Works with n8n
+
+Jared integrates out of the box with [n8n](https://n8n.io), a self-hosted workflow automation platform. You can trigger n8n workflows from any iMessage conversation, or have n8n send iMessages via Jared's REST API.
+
+**Requirements:** macOS (for Jared) + n8n (native or Docker).
+
+1. Add your n8n Webhook node URL to `config.json`'s `webhooks` array.
+2. Reload Jared (`/reload` in any conversation, or **Reload Plugins** in the menu bar).
+3. Send a message — Jared posts it to your n8n workflow instantly.
+
+For the full setup guide including HMAC signing, Docker networking, and troubleshooting, see [Documentation/n8n.md](Documentation/n8n.md).
+
 ## Installation  
 ![Jared Main Window](/Documentation/Screenshots/MainWindow.png)
 
@@ -76,7 +88,7 @@ Jared Provides a variety of APIs to allow you to easily add your own commands, a
 ### Plugins  
 Additional routes can be added via modularized plugins, written in native Swift code. Plugins are loaded dynamically from the `~/Library/Application Support/Jared/Plugins` folder. To install a module, drag it in there and then send `/reload` to Jared, or click `Reload Plugins` in the UI.
   
-For more information on developing your own plugins, see the [plugin documentation](Documentation/plugins.md). If you developed any plugins, please contact me a link so I can add a link here! I will be working on a few extra modules of my own as well, and will add them here when they are complete.
+For more information on developing your own plugins, see the [plugin documentation](Documentation/plugins.md). If you developed any plugins, please send me a link so I can add a link here! I will be working on a few extra modules of my own as well, and will add them here when they are complete.
 
 ### Webhooks
 Jared supports webhooks for sending your server information about incoming and outgoing messages. Your server can respond to these requests to send messages, or use the REST API to send messages at any time. To configure webhooks, add them to the `config.json` mentioned above. For more info on the webhooks API, check out the [webhook documentation](Documentation/webhooks.md).

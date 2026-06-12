@@ -4,6 +4,9 @@
 //
 
 import Foundation
+import os
+
+private let logger = Logger(subsystem: "com.zekesnider.jared", category: "configuration")
 
 class ConfigurationWatcher {
     private let configURL: URL
@@ -20,7 +23,7 @@ class ConfigurationWatcher {
     func start() {
         let fd = open(configURL.path, O_EVTONLY)
         guard fd >= 0 else {
-            NSLog("ConfigurationWatcher: could not open %@", configURL.path)
+            logger.error("ConfigurationWatcher: could not open \(self.configURL.path, privacy: .public)")
             return
         }
 
@@ -52,9 +55,13 @@ class ConfigurationWatcher {
             }
         }
         if let applier = applier,
-           let data = try? Data(contentsOf: configURL),
-           let config = try? JSONDecoder().decode(ConfigurationFile.self, from: data) {
-            applier.apply(config)
+           let data = try? Data(contentsOf: configURL) {
+            do {
+                let config = try JSONDecoder().decode(ConfigurationFile.self, from: data)
+                applier.apply(config)
+            } catch {
+                logger.error("Failed to parse config.json: \(error.localizedDescription, privacy: .public) — check syntax at https://jsonlint.com")
+            }
         }
         onChange()
     }

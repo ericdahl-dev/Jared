@@ -6,10 +6,18 @@
 	},
 	"webhooks": [
 		{
-			"url": "https://webhook.site/1"
+			"url": "http://localhost:5678/webhook/YOUR-WORKFLOW-ID",
+			"mode": "notify",
+			"failurePolicy": { "maxRetries": 3 }
+		},
+		{
+			"url": "http://localhost:5678/webhook/COMMAND-WORKFLOW-ID",
+			"mode": "command",
+			"auth": { "secret": "stored-in-keychain-see-docs" }
 		},
 		{
 			"url": "https://webhook.site/2",
+			"mode": "notify",
 			"routes": [
 				{
 					"name": "/hello",

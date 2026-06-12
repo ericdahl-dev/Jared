@@ -3,6 +3,13 @@
     },
     "webhooks": [
     ],
+    "_webhooks_example": [
+        {
+            "url": "http://localhost:5678/webhook/YOUR-WORKFLOW-ID",
+            "mode": "notify",
+            "failurePolicy": { "maxRetries": 3 }
+        }
+    ],
     "webServer": {
         "port": 3005
     }

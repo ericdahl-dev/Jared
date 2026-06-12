@@ -53,6 +53,7 @@
 		EC000001000000000000AA21 /* MessageMatcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA24 /* MessageMatcherTests.swift */; };
 		EC000001000000000000AA22 /* MessageMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA23 /* MessageMatcher.swift */; };
 		B3327DD8220682ED009DD882 /* WebhookTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3327DC722068147009DD882 /* WebhookTests.swift */; };
+		FA7B3C91D05E4A8B67120457 /* WebhookDeliveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA7B3C91D05E4A8B67120456 /* WebhookDeliveryTests.swift */; };
 		B347A4A224DA766A00E93657 /* MessageRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3A4C61323B867E300B7F009 /* MessageRequest.swift */; };
 		B347A4A624DD0CE500E93657 /* MessageSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = B347A4A324DD0B7400E93657 /* MessageSender.swift */; };
 		B347A4A724DD0FCF00E93657 /* Jared.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3EF1DA92206E09B00953DE7 /* Jared.swift */; };
@@ -75,6 +76,7 @@
 		B36C8D7F24EA655900C00A99 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = B36C8D7E24EA655900C00A99 /* Configuration.swift */; };
 		B375A65921EB14470073F09F /* AboutViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B375A65821EB14470073F09F /* AboutViewController.swift */; };
 		EC000001000000000000AC01 /* LLMSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AC02 /* LLMSettingsViewController.swift */; };
+		EC000001000000000000AC03 /* WebhookManagementWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AC04 /* WebhookManagementWindowController.swift */; };
 		B37E82821FA85B210069E15D /* SendTextSingleBuddy.scpt in Resources */ = {isa = PBXBuildFile; fileRef = B37E82811FA85B210069E15D /* SendTextSingleBuddy.scpt */; };
 		B38BB6AD24EB99BE000700F7 /* Webhook.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3B7E52824EA579600A3FBD1 /* Webhook.swift */; };
 		B38BB6AF24EBB4D8000700F7 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = B36C8D7E24EA655900C00A99 /* Configuration.swift */; };
@@ -120,6 +122,8 @@
 		B3F185F724E51C880051C696 /* CoreModule.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = B3F185F524E51C880051C696 /* CoreModule.xcdatamodeld */; };
 		B3FB28F224E9BAF7003BA6CB /* PermissionsHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3FB28F124E9BAF7003BA6CB /* PermissionsHelper.swift */; };
 		B3FB28F424E9BCBD003BA6CB /* JaredConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3FB28F324E9BCBD003BA6CB /* JaredConstants.swift */; };
+		05ED22B0F8F944D6B8977436 /* KeychainAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45E12AB486034AD9BDE543E7 /* KeychainAccessor.swift */; };
+		AD456B8A60A74A9E90DC26CA /* KeychainAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45E12AB486034AD9BDE543E7 /* KeychainAccessor.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -209,6 +213,7 @@
 		EC000001000000000000AA23 /* MessageMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageMatcher.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA24 /* MessageMatcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageMatcherTests.swift; sourceTree = "<group>"; };
 		B3327DC722068147009DD882 /* WebhookTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebhookTests.swift; sourceTree = "<group>"; };
+		FA7B3C91D05E4A8B67120456 /* WebhookDeliveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebhookDeliveryTests.swift; sourceTree = "<group>"; };
 		B3327DCE22068176009DD882 /* JaredTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JaredTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B3327DD222068176009DD882 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B347A4A324DD0B7400E93657 /* MessageSender.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageSender.swift; sourceTree = "<group>"; };
@@ -226,6 +231,7 @@
 		B36C8D7E24EA655900C00A99 /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
 		B375A65821EB14470073F09F /* AboutViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutViewController.swift; sourceTree = "<group>"; };
 		EC000001000000000000AC02 /* LLMSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMSettingsViewController.swift; sourceTree = "<group>"; };
+		EC000001000000000000AC04 /* WebhookManagementWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebhookManagementWindowController.swift; sourceTree = "<group>"; };
 		B3774D4E2424AFEB00F02F62 /* JaredDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = JaredDebug.entitlements; sourceTree = "<group>"; };
 		B37E82801FA85B170069E15D /* SendImageSingleBuddy.scpt */ = {isa = PBXFileReference; lastKnownFileType = file; path = SendImageSingleBuddy.scpt; sourceTree = "<group>"; };
 		B37E82811FA85B210069E15D /* SendTextSingleBuddy.scpt */ = {isa = PBXFileReference; lastKnownFileType = file; path = SendTextSingleBuddy.scpt; sourceTree = "<group>"; };
@@ -235,6 +241,7 @@
 		B3A4C61323B867E300B7F009 /* MessageRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageRequest.swift; sourceTree = "<group>"; };
 		B3B7E52324E9EE2000A3FBD1 /* AutomationPermissionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationPermissionState.swift; sourceTree = "<group>"; };
 		B3B7E52824EA579600A3FBD1 /* Webhook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Webhook.swift; sourceTree = "<group>"; };
+		45E12AB486034AD9BDE543E7 /* KeychainAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainAccessor.swift; sourceTree = "<group>"; };
 		B3B844B724D7791700DC162A /* ActionTypeTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionTypeTest.swift; sourceTree = "<group>"; };
 		B3B844B924D77A4800DC162A /* SendStyleTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SendStyleTest.swift; sourceTree = "<group>"; };
 		B3B844BB24D77BF200DC162A /* SendStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SendStyle.swift; sourceTree = "<group>"; };
@@ -350,6 +357,7 @@
 				EC000001000000000000AA0C /* MenuBarManager.swift */,
 				B375A65821EB14470073F09F /* AboutViewController.swift */,
 				EC000001000000000000AC02 /* LLMSettingsViewController.swift */,
+				EC000001000000000000AC04 /* WebhookManagementWindowController.swift */,
 				B36563EE1F3D68980064B114 /* TouchBarTextFieldExtension.swift */,
 				B332787B1CB2CB1300BBDD3A /* ViewController.swift */,
 				B332787D1CB2CB1300BBDD3A /* Assets.xcassets */,
@@ -363,6 +371,7 @@
 			isa = PBXGroup;
 			children = (
 				B3327DC722068147009DD882 /* WebhookTests.swift */,
+				FA7B3C91D05E4A8B67120456 /* WebhookDeliveryTests.swift */,
 				EC000001000000000000AA04 /* LLMModuleTests.swift */,
 				EC000001000000000000AA11 /* ConfigurationWatcherTests.swift */,
 				EC000001000000000000AA45 /* ScheduleModuleTests.swift */,
@@ -392,6 +401,7 @@
 				B36C8D7E24EA655900C00A99 /* Configuration.swift */,
 				B3B7E52324E9EE2000A3FBD1 /* AutomationPermissionState.swift */,
 				B3B7E52824EA579600A3FBD1 /* Webhook.swift */,
+				45E12AB486034AD9BDE543E7 /* KeychainAccessor.swift */,
 				B3A4C61323B867E300B7F009 /* MessageRequest.swift */,
 			);
 			name = Structures;
@@ -784,12 +794,14 @@
 				B3BF17C2244EBE9A00CC44C5 /* Router.swift in Sources */,
 				B375A65921EB14470073F09F /* AboutViewController.swift in Sources */,
 				EC000001000000000000AC01 /* LLMSettingsViewController.swift in Sources */,
+				EC000001000000000000AC03 /* WebhookManagementWindowController.swift in Sources */,
 				7F0E931D1D02FC250096BABE /* Global.swift in Sources */,
 				B353946224E64DDE00F9424A /* PersistentContainer.swift in Sources */,
 				B36C8D7F24EA655900C00A99 /* Configuration.swift in Sources */,
 				B3B844C424D9288000DC162A /* RouterDelegate.swift in Sources */,
 				B3B7E52424E9EE2000A3FBD1 /* AutomationPermissionState.swift in Sources */,
 				B3B7E52924EA579600A3FBD1 /* Webhook.swift in Sources */,
+				05ED22B0F8F944D6B8977436 /* KeychainAccessor.swift in Sources */,
 				B3C59284224DD17900116ECB /* JaredWebServer.swift in Sources */,
 				B3FB28F424E9BCBD003BA6CB /* JaredConstants.swift in Sources */,
 			);
@@ -831,8 +843,10 @@
 				B36710E224DFB5EC00DA1C5D /* JaredMock.swift in Sources */,
 				B3B844C224D8FA7D00DC162A /* DatabaseTestHelper.swift in Sources */,
 				B38BB6AD24EB99BE000700F7 /* Webhook.swift in Sources */,
+				AD456B8A60A74A9E90DC26CA /* KeychainAccessor.swift in Sources */,
 				B3B844BA24D77A4900DC162A /* SendStyleTest.swift in Sources */,
 				B3327DD8220682ED009DD882 /* WebhookTests.swift in Sources */,
+				FA7B3C91D05E4A8B67120457 /* WebhookDeliveryTests.swift in Sources */,
 				EC000001000000000000AA05 /* LLMModuleTests.swift in Sources */,
 				EC000001000000000000AA09 /* ConfigurationWatcherTests.swift in Sources */,
 				EC000001000000000000AA21 /* MessageMatcherTests.swift in Sources */,
