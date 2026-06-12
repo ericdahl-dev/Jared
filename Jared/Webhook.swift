@@ -34,6 +34,7 @@ struct FailurePolicy: Codable {
 
 struct RichWebhook: Decodable {
     var url: String
+    var isEnabled: Bool
     var mode: WebhookMode
     var routes: [Route]?
     var auth: WebhookAuth?
@@ -53,6 +54,7 @@ struct RichWebhook: Decodable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         url = try c.decode(String.self, forKey: .url)
+        isEnabled = (try? c.decodeIfPresent(Bool.self, forKey: .isEnabled)) ?? true
         mode = (try? c.decodeIfPresent(WebhookMode.self, forKey: .mode)) ?? .notify
         routes = try? c.decodeIfPresent([Route].self, forKey: .routes)
         auth = try? c.decodeIfPresent(WebhookAuth.self, forKey: .auth)
@@ -60,10 +62,11 @@ struct RichWebhook: Decodable {
         failurePolicy = (try? c.decodeIfPresent(FailurePolicy.self, forKey: .failurePolicy)) ?? FailurePolicy()
     }
 
-    init(url: String, mode: WebhookMode = .notify, routes: [Route]? = nil,
+    init(url: String, isEnabled: Bool = true, mode: WebhookMode = .notify, routes: [Route]? = nil,
          auth: WebhookAuth? = nil, deliveryPolicy: DeliveryPolicy = DeliveryPolicy(),
          failurePolicy: FailurePolicy = FailurePolicy()) {
         self.url = url
+        self.isEnabled = isEnabled
         self.mode = mode
         self.routes = routes
         self.auth = auth
@@ -72,7 +75,7 @@ struct RichWebhook: Decodable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case url, mode, routes, auth, deliveryPolicy, failurePolicy
+        case url, isEnabled = "enabled", mode, routes, auth, deliveryPolicy, failurePolicy
     }
 }
 
