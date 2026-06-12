@@ -37,17 +37,32 @@ class JaredWebServer: NSObject {
         if (defaults.bool(forKey: JaredConstants.restApiIsDisabled)) {
             stop()
         } else {
-            start()
+            _ = start()
         }
         
     }
     
-    public func start() {
-        try? server.start(port: port)
+    @discardableResult
+    public func start() -> Bool {
+        do {
+            try server.start(port: port)
+            return true
+        } catch {
+            NSLog("Failed to start Jared web server on port %d: %@", port ?? 0, error.localizedDescription)
+            return false
+        }
     }
     
     public func stop() {
         server.stop()
+    }
+
+    var listeningPort: Int {
+        return Int(server.port)
+    }
+
+    var isRunning: Bool {
+        return server.isRunning
     }
     
     private func handleMessageRequest(request: HTTPRequest) -> HTTPResponse {
