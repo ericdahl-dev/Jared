@@ -86,3 +86,18 @@ struct WebhookResponse: Decodable {
     var body: TextBody?
     var error: String?
 }
+
+// MARK: - Delivery record (in-memory, current session)
+
+public struct WebhookDeliveryRecord {
+    public let deliveryId: String
+    public let webhookURL: String
+    public let date: Date
+    public let statusCode: Int?
+    public let errorDescription: String?
+    public let attempt: Int
+}
+
+public extension Notification.Name {
+    static let webhookDelivered = Notification.Name("com.jared.webhookDelivered")
+}
