@@ -33,6 +33,7 @@ class ViewController: NSViewController, DiskAccessDelegate {
     private var diskRow: StatusRowView!
     private var apiRow: StatusRowView!
     private var llmRow: StatusRowView!
+    private var webhookRow: StatusRowView!
     private var contactsRow: StatusRowView!
     private var sendRow: StatusRowView!
 
@@ -43,7 +44,8 @@ class ViewController: NSViewController, DiskAccessDelegate {
         JaredConstants.llmIsDisabled,
         JaredConstants.contactsAccess,
         JaredConstants.sendMessageAccess,
-        JaredConstants.fullDiskAccess
+        JaredConstants.fullDiskAccess,
+        JaredConstants.webhookCount,
     ]
 
     // MARK: - Lifecycle
@@ -144,17 +146,20 @@ class ViewController: NSViewController, DiskAccessDelegate {
         let content = NSView()
         content.translatesAutoresizingMaskIntoConstraints = false
 
-        jaredRow    = StatusRowView(icon: "bubble.left.fill",   iconColor: .systemGreen,  title: "Jared")
-        diskRow     = StatusRowView(icon: "internaldrive.fill",  iconColor: .systemBlue,   title: "Full disk access")
-        apiRow      = StatusRowView(icon: "network",             iconColor: .systemIndigo,  title: "REST API")
-        llmRow      = StatusRowView(icon: "brain",                iconColor: .systemTeal,    title: "LLM")
-        contactsRow = StatusRowView(icon: "person.fill",         iconColor: .systemOrange, title: "Contacts")
-        sendRow     = StatusRowView(icon: "envelope.fill",       iconColor: .systemPurple, title: "Messages automation")
+        jaredRow    = StatusRowView(icon: "bubble.left.fill",      iconColor: .systemGreen,  title: "Jared")
+        diskRow     = StatusRowView(icon: "internaldrive.fill",   iconColor: .systemBlue,   title: "Full disk access")
+        apiRow      = StatusRowView(icon: "network",              iconColor: .systemIndigo, title: "REST API")
+        llmRow      = StatusRowView(icon: "brain",                iconColor: .systemTeal,   title: "LLM")
+        webhookRow  = StatusRowView(icon: "bolt.horizontal.fill", iconColor: .systemPink,   title: "Webhooks")
+        contactsRow = StatusRowView(icon: "person.fill",          iconColor: .systemOrange, title: "Contacts")
+        sendRow     = StatusRowView(icon: "envelope.fill",        iconColor: .systemPurple, title: "Messages automation")
 
         apiRow.actionButton.target      = self
         apiRow.actionButton.action      = #selector(EnableDisableRestApiAction(_:))
         llmRow.actionButton.target      = self
         llmRow.actionButton.action      = #selector(EnableDisableLLMAction(_:))
+        webhookRow.actionButton.target  = self
+        webhookRow.actionButton.action  = #selector(openWebhookConfig(_:))
         contactsRow.actionButton.target = self
         contactsRow.actionButton.action = #selector(contactsButtonAction(_:))
         sendRow.actionButton.target     = self
@@ -165,7 +170,7 @@ class ViewController: NSViewController, DiskAccessDelegate {
         let rows: [NSView] = [
             sectionHeader("Status"),   jaredRow, diskRow,
             separator(),
-            sectionHeader("Services"), apiRow, llmRow,
+            sectionHeader("Services"), apiRow, llmRow, webhookRow,
             separator(),
             sectionHeader("Permissions"), contactsRow, sendRow,
             separator(),
@@ -194,7 +199,7 @@ class ViewController: NSViewController, DiskAccessDelegate {
             content.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor),
         ])
 
-        for row in [jaredRow, diskRow, apiRow, llmRow, contactsRow, sendRow] as [NSView] {
+        for row in [jaredRow, diskRow, apiRow, llmRow, webhookRow, contactsRow, sendRow] as [NSView] {
             row.leadingAnchor.constraint(equalTo: stack.leadingAnchor).isActive = true
             row.trailingAnchor.constraint(equalTo: stack.trailingAnchor).isActive = true
         }
@@ -334,6 +339,11 @@ class ViewController: NSViewController, DiskAccessDelegate {
                 self.llmRow?.update(statusText: "Enabled", state: .on, buttonTitle: "Disable")
             }
 
+            // Webhook row
+            let count = self.defaults.integer(forKey: JaredConstants.webhookCount)
+            let whText = count == 0 ? "None configured" : count == 1 ? "1 configured" : "\(count) configured"
+            self.webhookRow?.update(statusText: whText, state: count > 0 ? .on : .off, buttonTitle: "Manage")
+
             // Contacts row
             switch CNAuthorizationStatus(rawValue: self.defaults.integer(forKey: JaredConstants.contactsAccess)) {
             case .authorized:
@@ -388,6 +398,17 @@ class ViewController: NSViewController, DiskAccessDelegate {
 
     @objc private func openDiskPrefs() {
         NSWorkspace.shared.open(URL(string: JaredConstants.fullDiskAcccessUrl)!)
+    }
+
+    private var webhookManagementWindowController: WebhookManagementWindowController?
+
+    @objc private func openWebhookConfig(_ sender: Any) {
+        if webhookManagementWindowController == nil {
+            webhookManagementWindowController = WebhookManagementWindowController()
+        }
+        webhookManagementWindowController?.showWindow(self)
+        webhookManagementWindowController?.window?.center()
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     @IBAction func EnableDisableAction(_ sender: Any) {

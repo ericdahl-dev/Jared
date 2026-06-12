@@ -135,7 +135,7 @@ class WebHookManager: MessageDelegate, RoutingModule {
     // MARK: - Configuration
 
     public func updateHooks(to hooks: [RichWebhook]?) {
-        self.webhooks = (hooks ?? []).map { hook in
+        self.webhooks = (hooks ?? []).filter { $0.isEnabled }.map { hook in
             var newHook = hook
             // Persist inline auth.secret to Keychain on first load
             if let inlineSecret = newHook.auth?.secret {
@@ -151,6 +151,7 @@ class WebHookManager: MessageDelegate, RoutingModule {
             return newHook
         }
         self.routes = self.webhooks.flatMap { $0.routes ?? [] }
+        UserDefaults.standard.set(self.webhooks.count, forKey: JaredConstants.webhookCount)
         logger.notice("Webhooks updated: \(self.webhooks.map { $0.url }.joined(separator: ", "), privacy: .public)")
     }
 
