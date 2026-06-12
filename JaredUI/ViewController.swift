@@ -137,8 +137,10 @@ class ViewController: NSViewController, DiskAccessDelegate {
     private func buildScrollContent() {
         let scroll = NSScrollView()
         scroll.hasVerticalScroller = true
+        scroll.autohidesScrollers = true
         scroll.hasHorizontalScroller = false
         scroll.horizontalScrollElasticity = .none
+        scroll.verticalScrollElasticity = .none
         scroll.drawsBackground = false
         scroll.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(scroll)
@@ -255,10 +257,12 @@ class ViewController: NSViewController, DiskAccessDelegate {
     }
 
     private func separator() -> NSView {
-        let b = NSBox(); b.boxType = .separator
-        b.translatesAutoresizingMaskIntoConstraints = false
-        b.heightAnchor.constraint(equalToConstant: 1).isActive = true
-        return b
+        let v = NSView()
+        v.translatesAutoresizingMaskIntoConstraints = false
+        v.wantsLayer = true
+        v.layer?.backgroundColor = NSColor.separatorColor.cgColor
+        v.heightAnchor.constraint(equalToConstant: 1).isActive = true
+        return v
     }
 
     private func toolButton(_ title: String, icon: String, action: Selector) -> NSButton {
