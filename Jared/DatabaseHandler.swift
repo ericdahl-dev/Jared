@@ -69,8 +69,9 @@ class DatabaseHandler {
     init(router: RouterDelegate, databaseLocation: URL, diskAccessDelegate: DiskAccessDelegate?) {
         self.router = router
         
-        if sqlite3_open(databaseLocation.path, &db) != SQLITE_OK {
-            NSLog("Error opening SQLite database. Likely Full disk access error.")
+        if sqlite3_open_v2(databaseLocation.path, &db, SQLITE_OPEN_READONLY, nil) != SQLITE_OK {
+            let errorMessage = db.flatMap { sqlite3_errmsg($0) }.map { String(cString: $0) } ?? "Unknown SQLite error"
+            NSLog("Error opening SQLite database at %@: %@", databaseLocation.path, errorMessage)
             UserDefaults.standard.set(false, forKey: JaredConstants.fullDiskAccess)
             diskAccessDelegate?.displayAccessError()
             return
@@ -104,9 +105,9 @@ class DatabaseHandler {
     private func startWALWatcher(databaseLocation: URL) {
         let walURL = URL(fileURLWithPath: databaseLocation.path + "-wal")
 
-        // Ensure WAL file exists so we can watch it
         if !FileManager.default.fileExists(atPath: walURL.path) {
-            FileManager.default.createFile(atPath: walURL.path, contents: nil)
+            NSLog("WAL watcher: %@ missing, falling back to polling", walURL.path)
+            return
         }
 
         let fd = open(walURL.path, O_EVTONLY)
