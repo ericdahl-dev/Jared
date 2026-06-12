@@ -5,127 +5,412 @@
 
 import Cocoa
 
-class WebhookManagementWindowController: NSWindowController, NSTableViewDelegate, NSTableViewDataSource {
+// MARK: - Endpoint list cell
 
-    private var tableView: NSTableView!
-    private var emptyLabel: NSTextField!
-    private var statusLabel: NSTextField!
+private class EndpointCellView: NSTableCellView {
+    let hostLabel   = NSTextField(labelWithString: "")
+    let statusBadge = NSTextField(labelWithString: "")
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        hostLabel.font = .systemFont(ofSize: 13)
+        hostLabel.lineBreakMode = .byTruncatingMiddle
+        hostLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        statusBadge.font = .systemFont(ofSize: 10, weight: .medium)
+        statusBadge.translatesAutoresizingMaskIntoConstraints = false
+
+        addSubview(hostLabel)
+        addSubview(statusBadge)
+
+        NSLayoutConstraint.activate([
+            hostLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            hostLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            hostLabel.topAnchor.constraint(equalTo: topAnchor, constant: 7),
+
+            statusBadge.leadingAnchor.constraint(equalTo: hostLabel.leadingAnchor),
+            statusBadge.topAnchor.constraint(equalTo: hostLabel.bottomAnchor, constant: 2),
+        ])
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    func configure(with hook: [String: Any]) {
+        let url     = hook["url"] as? String ?? ""
+        let enabled = hook["enabled"] as? Bool ?? true
+        hostLabel.stringValue  = URL(string: url)?.host ?? url
+        hostLabel.textColor    = enabled ? .labelColor : .tertiaryLabelColor
+        statusBadge.stringValue = enabled ? "Active" : "Disabled"
+        statusBadge.textColor   = enabled ? .systemGreen : .secondaryLabelColor
+    }
+}
+
+// MARK: - Delivery history cell
+
+private class DeliveryCellView: NSTableCellView {
+    let statusLabel = NSTextField(labelWithString: "")
+    let timeLabel   = NSTextField(labelWithString: "")
+    let idLabel     = NSTextField(labelWithString: "")
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        for f in [statusLabel, timeLabel, idLabel] {
+            f.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(f)
+        }
+        statusLabel.font = .systemFont(ofSize: 12, weight: .medium)
+        timeLabel.font   = .systemFont(ofSize: 11)
+        timeLabel.textColor = .secondaryLabelColor
+        idLabel.font     = .monospacedSystemFont(ofSize: 10, weight: .regular)
+        idLabel.textColor = .tertiaryLabelColor
+        idLabel.lineBreakMode = .byTruncatingMiddle
+
+        NSLayoutConstraint.activate([
+            statusLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            statusLabel.topAnchor.constraint(equalTo: topAnchor, constant: 6),
+            timeLabel.leadingAnchor.constraint(equalTo: statusLabel.trailingAnchor, constant: 8),
+            timeLabel.centerYAnchor.constraint(equalTo: statusLabel.centerYAnchor),
+            idLabel.leadingAnchor.constraint(equalTo: statusLabel.leadingAnchor),
+            idLabel.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 2),
+            idLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+        ])
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    private static let formatter: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter(); f.unitsStyle = .short; return f
+    }()
+
+    func configure(with record: WebhookDeliveryRecord) {
+        if let code = record.statusCode {
+            statusLabel.stringValue = (200...299).contains(code) ? "✓ \(code)" : "✗ \(code)"
+            statusLabel.textColor   = (200...299).contains(code) ? .systemGreen : .systemOrange
+        } else if let err = record.errorDescription {
+            statusLabel.stringValue = "Error"
+            statusLabel.textColor   = .systemRed
+            idLabel.stringValue     = err
+        }
+        if record.attempt > 1 { statusLabel.stringValue += "  (attempt \(record.attempt))" }
+        timeLabel.stringValue = Self.formatter.localizedString(for: record.date, relativeTo: Date())
+        if record.errorDescription == nil {
+            idLabel.stringValue = record.deliveryId
+        }
+    }
+}
+
+// MARK: - Window controller
+
+class WebhookManagementWindowController: NSWindowController,
+                                          NSTableViewDelegate,
+                                          NSTableViewDataSource {
+
+    // Left panel
+    private var endpointTable:  NSTableView!
+
+    // Right panel
+    private var detailBox:      NSView!
+    private var urlField:       NSTextField!
+    private var enabledCheck:   NSButton!
+    private var routesLabel:    NSTextField!
+    private var deliveryStatus: NSTextField!
+    private var saveBtn:        NSButton!
+    private var deleteBtn:      NSButton!
+    private var openBtn:        NSButton!
+    private var testBtn:        NSButton!
+    private var historyTable:   NSTableView!
+    private var historyStatus:  NSTextField!
+    private var emptyDetail:    NSTextField!
+
     private var webhooks: [[String: Any]] = []
+    private var deliveryLog: [WebhookDeliveryRecord] = []
+
+    private var selectedRow: Int = -1 {
+        didSet { updateDetail() }
+    }
 
     private let configURL = ConfigurationHelper.getSupportDirectory()
         .appendingPathComponent("config.json")
 
+    // MARK: Init
+
     convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 380),
-            styleMask: [.titled, .closable],
+            contentRect: NSRect(x: 0, y: 0, width: 720, height: 480),
+            styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
-        window.title = "Webhooks"
-        window.isMovableByWindowBackground = true
+        window.title = "Webhook Management"
+        window.minSize = NSSize(width: 600, height: 380)
         self.init(window: window)
         setupUI()
         loadWebhooks()
+        NotificationCenter.default.addObserver(self, selector: #selector(deliveryRecorded(_:)),
+                                               name: .webhookDelivered, object: nil)
     }
 
-    // MARK: - UI
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    // MARK: - UI setup
 
     private func setupUI() {
         guard let cv = window?.contentView else { return }
 
-        let scrollView = NSScrollView()
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = false
-        scrollView.borderType = .bezelBorder
-        scrollView.autohidesScrollers = true
-        cv.addSubview(scrollView)
+        // ── Split view ─────────────────────────────────────────────
+        let split = NSSplitView()
+        split.isVertical = true
+        split.dividerStyle = .thin
+        split.autoresizingMask = [.width, .height]
+        split.frame = cv.bounds
+        cv.addSubview(split)
 
-        tableView = NSTableView()
-        tableView.delegate = self
-        tableView.dataSource = self
-        tableView.usesAlternatingRowBackgroundColors = true
-        tableView.rowHeight = 40
-        tableView.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
+        // ── Left panel ─────────────────────────────────────────────
+        let leftPanel = NSView()
+        split.addArrangedSubview(leftPanel)
 
-        let enabledCol = NSTableColumn(identifier: .init("enabled"))
-        enabledCol.title = "On"
-        enabledCol.width = 36
-        enabledCol.resizingMask = []
-        tableView.addTableColumn(enabledCol)
+        let leftTitle = sectionTitle("Endpoints")
+        let leftSub   = bodyLabel("Add, remove, and review configured webhooks.")
+        leftSub.lineBreakMode = .byWordWrapping
+        leftSub.maximumNumberOfLines = 2
 
-        let urlCol = NSTableColumn(identifier: .init("url"))
-        urlCol.title = "URL"
-        urlCol.resizingMask = .autoresizingMask
-        tableView.addTableColumn(urlCol)
+        let newBtn = NSButton(title: "New", target: self, action: #selector(addWebhook))
+        newBtn.bezelStyle = .rounded
+        let refreshBtn = NSButton(title: "Refresh", target: self, action: #selector(refresh(_:)))
+        refreshBtn.bezelStyle = .rounded
+        let btnStack = NSStackView(views: [newBtn, refreshBtn])
+        btnStack.orientation = .horizontal
+        btnStack.spacing = 8
 
-        let modeCol = NSTableColumn(identifier: .init("mode"))
-        modeCol.title = "Mode"
-        modeCol.width = 76
-        modeCol.resizingMask = []
-        tableView.addTableColumn(modeCol)
+        let leftScrollView = NSScrollView()
+        leftScrollView.borderType = .noBorder
+        leftScrollView.hasVerticalScroller = true
+        leftScrollView.autohidesScrollers = true
+        leftScrollView.drawsBackground = false
 
-        let testCol = NSTableColumn(identifier: .init("test"))
-        testCol.title = ""
-        testCol.width = 52
-        testCol.resizingMask = []
-        tableView.addTableColumn(testCol)
+        endpointTable = NSTableView()
+        endpointTable.style = .inset
+        endpointTable.headerView = nil
+        endpointTable.rowHeight = 46
+        endpointTable.backgroundColor = .clear
+        endpointTable.selectionHighlightStyle = .regular
+        endpointTable.delegate = self
+        endpointTable.dataSource = self
+        let epCol = NSTableColumn(identifier: .init("endpoint"))
+        epCol.resizingMask = .autoresizingMask
+        endpointTable.addTableColumn(epCol)
+        leftScrollView.documentView = endpointTable
 
-        let deleteCol = NSTableColumn(identifier: .init("delete"))
-        deleteCol.title = ""
-        deleteCol.width = 36
-        deleteCol.resizingMask = []
-        tableView.addTableColumn(deleteCol)
-        tableView.doubleAction = #selector(editSelectedRow)
-        tableView.target = self
+        for v in [leftTitle, leftSub, btnStack, leftScrollView] as [NSView] {
+            v.translatesAutoresizingMaskIntoConstraints = false
+            leftPanel.addSubview(v)
+        }
+        NSLayoutConstraint.activate([
+            leftTitle.topAnchor.constraint(equalTo: leftPanel.topAnchor, constant: 16),
+            leftTitle.leadingAnchor.constraint(equalTo: leftPanel.leadingAnchor, constant: 14),
+            leftTitle.trailingAnchor.constraint(equalTo: leftPanel.trailingAnchor, constant: -8),
 
-        scrollView.documentView = tableView
+            leftSub.topAnchor.constraint(equalTo: leftTitle.bottomAnchor, constant: 2),
+            leftSub.leadingAnchor.constraint(equalTo: leftTitle.leadingAnchor),
+            leftSub.trailingAnchor.constraint(equalTo: leftTitle.trailingAnchor),
 
-        emptyLabel = NSTextField(labelWithString: "No webhooks configured.\nClick \"+ Add\" to get started.")
-        emptyLabel.alignment = .center
-        emptyLabel.textColor = .secondaryLabelColor
-        emptyLabel.font = .systemFont(ofSize: 13)
-        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
-        emptyLabel.isHidden = true
-        cv.addSubview(emptyLabel)
+            btnStack.topAnchor.constraint(equalTo: leftSub.bottomAnchor, constant: 10),
+            btnStack.leadingAnchor.constraint(equalTo: leftTitle.leadingAnchor),
 
-        statusLabel = NSTextField(labelWithString: "")
-        statusLabel.font = .systemFont(ofSize: 11)
-        statusLabel.textColor = .secondaryLabelColor
-        statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        cv.addSubview(statusLabel)
+            leftScrollView.topAnchor.constraint(equalTo: btnStack.bottomAnchor, constant: 8),
+            leftScrollView.leadingAnchor.constraint(equalTo: leftPanel.leadingAnchor),
+            leftScrollView.trailingAnchor.constraint(equalTo: leftPanel.trailingAnchor),
+            leftScrollView.bottomAnchor.constraint(equalTo: leftPanel.bottomAnchor),
 
-        let addButton = NSButton(title: "+ Add", target: self, action: #selector(addWebhook))
-        addButton.bezelStyle = .rounded
-        addButton.translatesAutoresizingMaskIntoConstraints = false
+            leftPanel.widthAnchor.constraint(greaterThanOrEqualToConstant: 190),
+        ])
+        split.setHoldingPriority(.defaultLow, forSubviewAt: 0)
 
-        let doneButton = NSButton(title: "Done", target: self, action: #selector(closeWindow))
-        doneButton.bezelStyle = .rounded
-        doneButton.keyEquivalent = "\r"
-        doneButton.translatesAutoresizingMaskIntoConstraints = false
-        cv.addSubview(addButton)
-        cv.addSubview(doneButton)
+        // ── Right panel ────────────────────────────────────────────
+        let rightPanel = NSView()
+        split.addArrangedSubview(rightPanel)
+
+        // Empty state shown when nothing selected
+        emptyDetail = bodyLabel("Select an endpoint to view details.")
+        emptyDetail.textColor = .tertiaryLabelColor
+        emptyDetail.alignment = .center
+        emptyDetail.translatesAutoresizingMaskIntoConstraints = false
+        rightPanel.addSubview(emptyDetail)
+
+        detailBox = NSView()
+        detailBox.translatesAutoresizingMaskIntoConstraints = false
+        detailBox.isHidden = true
+        rightPanel.addSubview(detailBox)
+
+        buildDetailPane(in: detailBox)
 
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: cv.topAnchor, constant: 16),
-            scrollView.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 16),
-            scrollView.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -16),
-            scrollView.bottomAnchor.constraint(equalTo: addButton.topAnchor, constant: -12),
+            emptyDetail.centerXAnchor.constraint(equalTo: rightPanel.centerXAnchor),
+            emptyDetail.centerYAnchor.constraint(equalTo: rightPanel.centerYAnchor),
 
-            emptyLabel.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
-            emptyLabel.centerYAnchor.constraint(equalTo: scrollView.centerYAnchor),
-
-            addButton.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 16),
-            addButton.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -16),
-
-            statusLabel.leadingAnchor.constraint(equalTo: addButton.trailingAnchor, constant: 12),
-            statusLabel.centerYAnchor.constraint(equalTo: addButton.centerYAnchor),
-            statusLabel.trailingAnchor.constraint(equalTo: doneButton.leadingAnchor, constant: -12),
-
-            doneButton.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -16),
-            doneButton.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -16),
+            detailBox.topAnchor.constraint(equalTo: rightPanel.topAnchor),
+            detailBox.bottomAnchor.constraint(equalTo: rightPanel.bottomAnchor),
+            detailBox.leadingAnchor.constraint(equalTo: rightPanel.leadingAnchor),
+            detailBox.trailingAnchor.constraint(equalTo: rightPanel.trailingAnchor),
         ])
+
+        // Initial split position
+        DispatchQueue.main.async {
+            split.setPosition(220, ofDividerAt: 0)
+        }
+
+        // Done button in titlebar area (top right)
+        let doneBtn = NSButton(title: "Done", target: self, action: #selector(closeWindow))
+        doneBtn.bezelStyle = .rounded
+        doneBtn.keyEquivalent = "\r"
+        doneBtn.translatesAutoresizingMaskIntoConstraints = false
+        cv.addSubview(doneBtn)
+        NSLayoutConstraint.activate([
+            doneBtn.topAnchor.constraint(equalTo: cv.topAnchor, constant: 10),
+            doneBtn.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -14),
+        ])
+    }
+
+    private func buildDetailPane(in box: NSView) {
+        let selectedTitle  = sectionTitle("Selected Webhook")
+        let urlLabel       = bodyLabel("Endpoint URL")
+        urlLabel.textColor = .secondaryLabelColor
+
+        urlField = NSTextField()
+        urlField.placeholderString = "https://example.com/webhook"
+        urlField.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        urlField.bezelStyle = .roundedBezel
+
+        enabledCheck = NSButton(checkboxWithTitle: "Enabled", target: nil, action: nil)
+
+        routesLabel = bodyLabel("")
+        routesLabel.textColor = .secondaryLabelColor
+        routesLabel.font = .systemFont(ofSize: 12)
+
+        let enableRow = NSStackView(views: [enabledCheck, routesLabel])
+        enableRow.orientation = .horizontal
+        enableRow.spacing = 10
+
+        deliveryStatus = bodyLabel("No deliveries recorded for this session")
+        deliveryStatus.textColor = .secondaryLabelColor
+        deliveryStatus.font = .systemFont(ofSize: 12)
+
+        saveBtn   = actionButton("Save Changes",       isPrimary: true)
+        deleteBtn = actionButton("Delete",             isPrimary: false)
+        openBtn   = actionButton("Open Endpoint",      isPrimary: false)
+        testBtn   = actionButton("Send Test Payload",  isPrimary: false)
+        saveBtn.action   = #selector(saveChanges)
+        deleteBtn.action = #selector(deleteSelected)
+        openBtn.action   = #selector(openEndpoint)
+        testBtn.action   = #selector(sendTest)
+        for b in [saveBtn!, deleteBtn!, openBtn!, testBtn!] { b.target = self }
+
+        let buttonRow = NSStackView(views: [saveBtn, deleteBtn, openBtn, testBtn])
+        buttonRow.orientation = .horizontal
+        buttonRow.spacing = 8
+
+        let sep = NSBox(); sep.boxType = .separator
+
+        let historyTitle = sectionTitle("Delivery History")
+        let historySub   = bodyLabel("History reflects recent deliveries from the current app session.")
+        historySub.textColor = .secondaryLabelColor
+        historySub.lineBreakMode = .byWordWrapping
+        historySub.maximumNumberOfLines = 2
+
+        let histScrollView = NSScrollView()
+        histScrollView.borderType = .noBorder
+        histScrollView.hasVerticalScroller = true
+        histScrollView.autohidesScrollers = true
+        histScrollView.drawsBackground = false
+
+        historyTable = NSTableView()
+        historyTable.style = .inset
+        historyTable.headerView = nil
+        historyTable.rowHeight = 40
+        historyTable.backgroundColor = .clear
+        historyTable.selectionHighlightStyle = .none
+        historyTable.delegate = self
+        historyTable.dataSource = self
+        let hCol = NSTableColumn(identifier: .init("history"))
+        hCol.resizingMask = .autoresizingMask
+        historyTable.addTableColumn(hCol)
+        histScrollView.documentView = historyTable
+
+        historyStatus = bodyLabel("No deliveries recorded for this session")
+        historyStatus.textColor = .tertiaryLabelColor
+        historyStatus.alignment = .center
+        historyStatus.font = .systemFont(ofSize: 12)
+
+        for v in [selectedTitle, urlLabel, urlField!, enableRow, deliveryStatus,
+                  buttonRow, sep, historyTitle, historySub,
+                  histScrollView, historyStatus] as [NSView] {
+            v.translatesAutoresizingMaskIntoConstraints = false
+            box.addSubview(v)
+        }
+
+        NSLayoutConstraint.activate([
+            selectedTitle.topAnchor.constraint(equalTo: box.topAnchor, constant: 16),
+            selectedTitle.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 20),
+            selectedTitle.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -20),
+
+            urlLabel.topAnchor.constraint(equalTo: selectedTitle.bottomAnchor, constant: 14),
+            urlLabel.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
+
+            urlField.topAnchor.constraint(equalTo: urlLabel.bottomAnchor, constant: 4),
+            urlField.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
+            urlField.trailingAnchor.constraint(equalTo: selectedTitle.trailingAnchor),
+
+            enableRow.topAnchor.constraint(equalTo: urlField.bottomAnchor, constant: 10),
+            enableRow.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
+
+            deliveryStatus.topAnchor.constraint(equalTo: enableRow.bottomAnchor, constant: 6),
+            deliveryStatus.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
+
+            buttonRow.topAnchor.constraint(equalTo: deliveryStatus.bottomAnchor, constant: 14),
+            buttonRow.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
+
+            sep.topAnchor.constraint(equalTo: buttonRow.bottomAnchor, constant: 16),
+            sep.leadingAnchor.constraint(equalTo: box.leadingAnchor),
+            sep.trailingAnchor.constraint(equalTo: box.trailingAnchor),
+
+            historyTitle.topAnchor.constraint(equalTo: sep.bottomAnchor, constant: 14),
+            historyTitle.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
+            historyTitle.trailingAnchor.constraint(equalTo: selectedTitle.trailingAnchor),
+
+            historySub.topAnchor.constraint(equalTo: historyTitle.bottomAnchor, constant: 2),
+            historySub.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
+            historySub.trailingAnchor.constraint(equalTo: selectedTitle.trailingAnchor),
+
+            histScrollView.topAnchor.constraint(equalTo: historySub.bottomAnchor, constant: 8),
+            histScrollView.leadingAnchor.constraint(equalTo: box.leadingAnchor),
+            histScrollView.trailingAnchor.constraint(equalTo: box.trailingAnchor),
+            histScrollView.bottomAnchor.constraint(equalTo: box.bottomAnchor),
+
+            historyStatus.centerXAnchor.constraint(equalTo: histScrollView.centerXAnchor),
+            historyStatus.centerYAnchor.constraint(equalTo: histScrollView.centerYAnchor),
+        ])
+    }
+
+    // MARK: - Helpers
+
+    private func sectionTitle(_ text: String) -> NSTextField {
+        let f = NSTextField(labelWithString: text)
+        f.font = .systemFont(ofSize: 15, weight: .semibold)
+        return f
+    }
+
+    private func bodyLabel(_ text: String) -> NSTextField {
+        let f = NSTextField(labelWithString: text)
+        f.font = .systemFont(ofSize: 12)
+        return f
+    }
+
+    private func actionButton(_ title: String, isPrimary: Bool) -> NSButton {
+        let b = NSButton(title: title, target: nil, action: nil)
+        b.bezelStyle = .rounded
+        b.font = .systemFont(ofSize: 12)
+        if isPrimary { b.keyEquivalent = "" }
+        return b
     }
 
     // MARK: - Data
@@ -133,12 +418,10 @@ class WebhookManagementWindowController: NSWindowController, NSTableViewDelegate
     private func loadWebhooks() {
         guard let data = try? Data(contentsOf: configURL),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            webhooks = []
-            refresh()
-            return
+            webhooks = []; reloadList(); return
         }
         webhooks = json["webhooks"] as? [[String: Any]] ?? []
-        refresh()
+        reloadList()
     }
 
     private func save() {
@@ -150,94 +433,144 @@ class WebhookManagementWindowController: NSWindowController, NSTableViewDelegate
         try? pretty.write(to: configURL, atomically: true, encoding: .utf8)
     }
 
-    private func refresh() {
-        tableView.reloadData()
-        emptyLabel.isHidden = !webhooks.isEmpty
+    private func reloadList() {
+        endpointTable.reloadData()
+        if selectedRow >= webhooks.count { selectedRow = -1 }
+        updateDetail()
     }
 
-    private func setStatus(_ text: String, color: NSColor = .secondaryLabelColor) {
-        DispatchQueue.main.async {
-            self.statusLabel.stringValue = text
-            self.statusLabel.textColor = color
+    private func updateDetail() {
+        guard selectedRow >= 0, selectedRow < webhooks.count else {
+            detailBox.isHidden = true
+            emptyDetail.isHidden = false
+            return
+        }
+        detailBox.isHidden = false
+        emptyDetail.isHidden = true
+
+        let hook = webhooks[selectedRow]
+        urlField.stringValue    = hook["url"] as? String ?? ""
+        enabledCheck.state      = (hook["enabled"] as? Bool ?? true) ? .on : .off
+        let routes = (hook["routes"] as? [[String: Any]])?.count ?? 0
+        routesLabel.stringValue = "\(routes) route\(routes == 1 ? "" : "s")"
+
+        refreshDeliveryStatus()
+        historyTable.reloadData()
+        let url = hook["url"] as? String ?? ""
+        let forThisHook = deliveryLog.filter { $0.webhookURL == url }
+        historyStatus.isHidden = !forThisHook.isEmpty
+    }
+
+    private func refreshDeliveryStatus() {
+        guard selectedRow >= 0, selectedRow < webhooks.count,
+              let url = webhooks[selectedRow]["url"] as? String,
+              let last = deliveryLog.first(where: { $0.webhookURL == url }) else {
+            deliveryStatus.stringValue = "No deliveries recorded for this session"
+            deliveryStatus.textColor   = .secondaryLabelColor
+            return
+        }
+        if let code = last.statusCode {
+            let ok = (200...299).contains(code)
+            deliveryStatus.stringValue = ok ? "Last delivery: ✓ \(code)" : "Last delivery: ✗ \(code)"
+            deliveryStatus.textColor   = ok ? .systemGreen : .systemOrange
+        } else if let err = last.errorDescription {
+            deliveryStatus.stringValue = "Last delivery failed: \(err)"
+            deliveryStatus.textColor   = .systemRed
         }
     }
 
-    // MARK: - Table
+    // MARK: - Table delegate / data source
 
-    func numberOfRows(in tableView: NSTableView) -> Int { webhooks.count }
+    func numberOfRows(in tableView: NSTableView) -> Int {
+        if tableView === endpointTable { return webhooks.count }
+        guard selectedRow >= 0, selectedRow < webhooks.count,
+              let url = webhooks[selectedRow]["url"] as? String else { return 0 }
+        return deliveryLog.filter { $0.webhookURL == url }.count
+    }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        let hook = webhooks[row]
-        switch tableColumn?.identifier.rawValue {
+        if tableView === endpointTable {
+            let id   = NSUserInterfaceItemIdentifier("ep")
+            let cell = (tableView.makeView(withIdentifier: id, owner: nil) as? EndpointCellView)
+                        ?? EndpointCellView(frame: .zero)
+            cell.identifier = id
+            cell.configure(with: webhooks[row])
+            return cell
+        } else {
+            let id   = NSUserInterfaceItemIdentifier("del")
+            let cell = (tableView.makeView(withIdentifier: id, owner: nil) as? DeliveryCellView)
+                        ?? DeliveryCellView(frame: .zero)
+            cell.identifier = id
+            guard selectedRow >= 0, selectedRow < webhooks.count,
+                  let url = webhooks[selectedRow]["url"] as? String else { return nil }
+            let records = deliveryLog.filter { $0.webhookURL == url }
+            if row < records.count { cell.configure(with: records[row]) }
+            return cell
+        }
+    }
 
-        case "enabled":
-            let cb = NSButton(checkboxWithTitle: "", target: self, action: #selector(toggleEnabled(_:)))
-            cb.tag = row
-            cb.state = (hook["enabled"] as? Bool ?? true) ? .on : .off
-            return cb
+    func tableViewSelectionDidChange(_ notification: Notification) {
+        guard let tv = notification.object as? NSTableView, tv === endpointTable else { return }
+        selectedRow = endpointTable.selectedRow
+    }
 
-        case "url":
-            let field = NSTextField(labelWithString: hook["url"] as? String ?? "")
-            field.lineBreakMode = .byTruncatingMiddle
-            field.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
-            field.textColor = (hook["enabled"] as? Bool ?? true) ? .labelColor : .tertiaryLabelColor
-            return field
+    // MARK: - Notification
 
-        case "mode":
-            let mode = hook["mode"] as? String ?? "notify"
-            let field = NSTextField(labelWithString: mode)
-            field.textColor = mode == "command" ? .systemOrange : .systemBlue
-            field.font = .systemFont(ofSize: 11, weight: .semibold)
-            return field
-
-        case "test":
-            let btn = NSButton(title: "Test", target: self, action: #selector(sendTest(_:)))
-            btn.bezelStyle = .rounded
-            btn.font = .systemFont(ofSize: 11)
-            btn.tag = row
-            return btn
-
-        case "delete":
-            let btn = NSButton(title: "×", target: self, action: #selector(deleteRow(_:)))
-            btn.bezelStyle = .rounded
-            btn.font = .systemFont(ofSize: 14)
-            btn.contentTintColor = .systemRed
-            btn.tag = row
-            return btn
-
-        default:
-            return nil
+    @objc private func deliveryRecorded(_ note: Notification) {
+        guard let url = note.userInfo?["url"] as? String else { return }
+        // Refresh if currently viewing this URL or showing history
+        if selectedRow >= 0, selectedRow < webhooks.count,
+           webhooks[selectedRow]["url"] as? String == url {
+            refreshDeliveryStatus()
+            historyTable.reloadData()
+            historyStatus.isHidden = true
         }
     }
 
     // MARK: - Actions
 
-    @objc private func toggleEnabled(_ sender: NSButton) {
-        let row = sender.tag
-        guard row < webhooks.count else { return }
-        webhooks[row]["enabled"] = sender.state == .on
-        tableView.reloadData()
+    @objc private func saveChanges() {
+        guard selectedRow >= 0, selectedRow < webhooks.count else { return }
+        let url = urlField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !url.isEmpty else { return }
+        webhooks[selectedRow]["url"]     = url
+        webhooks[selectedRow]["enabled"] = enabledCheck.state == .on
+        reloadList()
+        endpointTable.selectRowIndexes(IndexSet(integer: selectedRow), byExtendingSelection: false)
         save()
     }
 
-    @objc private func deleteRow(_ sender: NSButton) {
-        let row = sender.tag
-        guard row < webhooks.count else { return }
-        webhooks.remove(at: row)
-        refresh()
-        save()
-    }
-
-    @objc private func sendTest(_ sender: NSButton) {
-        let row = sender.tag
-        guard row < webhooks.count,
-              let urlString = webhooks[row]["url"] as? String,
-              let url = URL(string: urlString) else {
-            setStatus("Invalid URL", color: .systemRed)
-            return
+    @objc private func deleteSelected() {
+        guard selectedRow >= 0, selectedRow < webhooks.count, let window else { return }
+        let alert = NSAlert()
+        alert.messageText  = "Delete webhook?"
+        alert.informativeText = webhooks[selectedRow]["url"] as? String ?? ""
+        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Cancel")
+        alert.buttons[0].hasDestructiveAction = true
+        alert.beginSheetModal(for: window) { [weak self] r in
+            guard r == .alertFirstButtonReturn, let self else { return }
+            self.webhooks.remove(at: self.selectedRow)
+            self.selectedRow = -1
+            self.reloadList()
+            self.save()
         }
+    }
 
-        setStatus("Sending…", color: .secondaryLabelColor)
+    @objc private func openEndpoint() {
+        guard selectedRow >= 0, selectedRow < webhooks.count,
+              let urlStr = webhooks[selectedRow]["url"] as? String,
+              let url = URL(string: urlStr) else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    @objc private func sendTest() {
+        guard selectedRow >= 0, selectedRow < webhooks.count,
+              let urlStr = webhooks[selectedRow]["url"] as? String,
+              let url = URL(string: urlStr) else { return }
+
+        deliveryStatus.stringValue = "Sending test payload…"
+        deliveryStatus.textColor   = .secondaryLabelColor
 
         let payload: [String: Any] = [
             "text": "/test",
@@ -247,74 +580,29 @@ class WebhookManagementWindowController: NSWindowController, NSTableViewDelegate
             "date": ISO8601DateFormatter().string(from: Date()),
             "_jared_test": true,
         ]
+        var req = URLRequest(url: url, timeoutInterval: 10)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: payload)
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Jared/test", forHTTPHeaderField: "User-Agent")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
-        request.timeoutInterval = 10
-
-        URLSession.shared.dataTask(with: request) { [weak self] _, response, error in
-            if let error {
-                self?.setStatus("Error: \(error.localizedDescription)", color: .systemRed)
-                return
-            }
-            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-            if (200...299).contains(code) {
-                self?.setStatus("✓ \(code) — test delivered", color: .systemGreen)
-            } else {
-                self?.setStatus("✗ HTTP \(code)", color: .systemOrange)
+        URLSession.shared.dataTask(with: req) { [weak self] _, response, error in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if let error {
+                    self.deliveryStatus.stringValue = "Error: \(error.localizedDescription)"
+                    self.deliveryStatus.textColor   = .systemRed
+                    return
+                }
+                let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+                if (200...299).contains(code) {
+                    self.deliveryStatus.stringValue = "Test delivered ✓ \(code)"
+                    self.deliveryStatus.textColor   = .systemGreen
+                } else {
+                    self.deliveryStatus.stringValue = "Test failed ✗ HTTP \(code)"
+                    self.deliveryStatus.textColor   = .systemOrange
+                }
             }
         }.resume()
-    }
-
-    // MARK: - Edit / Add sheets
-
-    @objc private func editSelectedRow() {
-        let row = tableView.clickedRow
-        guard row >= 0, row < webhooks.count else { return }
-        editWebhook(at: row)
-    }
-
-    private func editWebhook(at row: Int) {
-        let hook = webhooks[row]
-
-        let alert = NSAlert()
-        alert.messageText = "Edit Webhook"
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
-
-        let urlField = NSTextField(frame: NSRect(x: 0, y: 34, width: 380, height: 22))
-        urlField.stringValue = hook["url"] as? String ?? ""
-        urlField.placeholderString = "https://example.com/webhook"
-
-        let modeLabel = NSTextField(labelWithString: "Mode:")
-        modeLabel.frame = NSRect(x: 0, y: 4, width: 40, height: 22)
-
-        let modeButton = NSPopUpButton(frame: NSRect(x: 46, y: 2, width: 120, height: 26))
-        modeButton.addItem(withTitle: "notify")
-        modeButton.addItem(withTitle: "command")
-        let currentMode = hook["mode"] as? String ?? "notify"
-        modeButton.selectItem(withTitle: currentMode)
-
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 60))
-        container.addSubview(urlField)
-        container.addSubview(modeLabel)
-        container.addSubview(modeButton)
-        alert.accessoryView = container
-
-        guard let window else { return }
-        alert.beginSheetModal(for: window) { [weak self] response in
-            guard response == .alertFirstButtonReturn else { return }
-            let url = urlField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !url.isEmpty else { return }
-            let mode = modeButton.selectedItem?.title ?? "notify"
-            self?.webhooks[row]["url"] = url
-            self?.webhooks[row]["mode"] = mode
-            self?.refresh()
-            self?.save()
-        }
     }
 
     @objc private func addWebhook() {
@@ -323,35 +611,37 @@ class WebhookManagementWindowController: NSWindowController, NSTableViewDelegate
         alert.addButton(withTitle: "Add")
         alert.addButton(withTitle: "Cancel")
 
-        let urlField = NSTextField(frame: NSRect(x: 0, y: 34, width: 380, height: 22))
+        let urlField = NSTextField(frame: NSRect(x: 0, y: 34, width: 400, height: 22))
         urlField.placeholderString = "https://example.com/webhook"
 
         let modeLabel = NSTextField(labelWithString: "Mode:")
-        modeLabel.frame = NSRect(x: 0, y: 4, width: 40, height: 22)
+        modeLabel.frame = NSRect(x: 0, y: 4, width: 42, height: 22)
 
-        let modeButton = NSPopUpButton(frame: NSRect(x: 46, y: 2, width: 120, height: 26))
-        modeButton.addItem(withTitle: "notify")
-        modeButton.addItem(withTitle: "command")
+        let modeBtn = NSPopUpButton(frame: NSRect(x: 48, y: 2, width: 130, height: 26))
+        modeBtn.addItem(withTitle: "notify")
+        modeBtn.addItem(withTitle: "command")
 
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 60))
-        container.addSubview(urlField)
-        container.addSubview(modeLabel)
-        container.addSubview(modeButton)
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 60))
+        container.addSubview(urlField); container.addSubview(modeLabel); container.addSubview(modeBtn)
         alert.accessoryView = container
 
         guard let window else { return }
         alert.beginSheetModal(for: window) { [weak self] response in
             guard response == .alertFirstButtonReturn else { return }
             let url = urlField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !url.isEmpty else { return }
-            let mode = modeButton.selectedItem?.title ?? "notify"
-            self?.webhooks.append(["url": url, "mode": mode, "enabled": true])
-            self?.refresh()
-            self?.save()
+            guard !url.isEmpty, let self else { return }
+            let mode = modeBtn.selectedItem?.title ?? "notify"
+            self.webhooks.append(["url": url, "mode": mode, "enabled": true])
+            self.reloadList()
+            self.save()
+            let last = self.webhooks.count - 1
+            self.endpointTable.selectRowIndexes(IndexSet(integer: last), byExtendingSelection: false)
+            self.endpointTable.scrollRowToVisible(last)
+            self.selectedRow = last
         }
     }
 
-    @objc private func closeWindow() {
-        window?.close()
-    }
+    @objc private func refresh(_ sender: Any) { loadWebhooks() }
+
+    @objc private func closeWindow() { window?.close() }
 }

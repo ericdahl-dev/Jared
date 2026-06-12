@@ -23,6 +23,22 @@ class WebHookManager: MessageDelegate, RoutingModule {
     /// Base nanosecond unit for retry backoff (2^attempt × base). Override in tests for speed.
     var retryDelayBase: UInt64 = 1_000_000_000
 
+    /// In-memory delivery log for the current session (newest first, capped at 200).
+    private(set) var deliveryLog: [WebhookDeliveryRecord] = []
+
+    private func record(_ webhookURL: String, deliveryId: String, attempt: Int,
+                        statusCode: Int? = nil, error: String? = nil) {
+        let rec = WebhookDeliveryRecord(deliveryId: deliveryId, webhookURL: webhookURL,
+                                        date: Date(), statusCode: statusCode,
+                                        errorDescription: error, attempt: attempt)
+        DispatchQueue.main.async {
+            self.deliveryLog.insert(rec, at: 0)
+            if self.deliveryLog.count > 200 { self.deliveryLog.removeLast() }
+            NotificationCenter.default.post(name: .webhookDelivered, object: self,
+                                            userInfo: ["url": webhookURL])
+        }
+    }
+
     public init(webhooks: [RichWebhook]?, session: URLSessionConfiguration = .ephemeral,
                 sender: MessageSender, keychain: KeychainAccessor = KeychainStore()) {
         session.timeoutIntervalForResource = 10.0
@@ -99,11 +115,13 @@ class WebHookManager: MessageDelegate, RoutingModule {
 
                 if (400...499).contains(httpResponse.statusCode) {
                     logger.warning("Webhook \(webhook.url, privacy: .public): 4xx \(httpResponse.statusCode, privacy: .public) — not retrying")
+                    record(webhook.url, deliveryId: deliveryId, attempt: attempt + 1, statusCode: httpResponse.statusCode)
                     return
                 }
 
                 if (200...299).contains(httpResponse.statusCode) {
                     logger.notice("Webhook \(webhook.url, privacy: .public): delivered (attempt \(attempt + 1, privacy: .public), status \(httpResponse.statusCode, privacy: .public))")
+                    record(webhook.url, deliveryId: deliveryId, attempt: attempt + 1, statusCode: httpResponse.statusCode)
                     if webhook.mode == .command {
                         guard let decoded = try? JSONDecoder().decode(WebhookResponse.self, from: data) else {
                             logger.warning("Webhook \(webhook.url, privacy: .public): unable to parse command response")
@@ -121,6 +139,7 @@ class WebHookManager: MessageDelegate, RoutingModule {
                 logger.warning("Webhook \(webhook.url, privacy: .public): status \(httpResponse.statusCode, privacy: .public) on attempt \(attempt + 1, privacy: .public)")
             } catch {
                 logger.error("Webhook \(webhook.url, privacy: .public): request failed on attempt \(attempt + 1, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                record(webhook.url, deliveryId: deliveryId, attempt: attempt + 1, error: error.localizedDescription)
             }
 
             if attempt < maxRetries {
