@@ -8,9 +8,10 @@
 
 import XCTest
 import JaredFramework
+@testable import Jared
 
 class JaredWebServerTest: XCTestCase {
-    static let validBody = "{\"body\": {\"message\": \"clandestine meetings\"},\"recipient\": {\"handle\": \"handle@email.com\"}}"
+    static let validBody = "{\"body\": {\"message\": \"[TEST ONLY] JaredWebServerTest\"},\"recipient\": {\"handle\": \"jared-webserver-test@example.invalid\"}}"
     static let invalidBody = "{dskjfal/iqwkjfdslol}"
     
     var jaredMock: JaredMock!
@@ -19,19 +20,23 @@ class JaredWebServerTest: XCTestCase {
     
     override func setUp() {
         jaredMock = JaredMock()
-        let configuration = WebserverConfiguration(port: 3005)
+        let configuration = WebserverConfiguration(port: 0)
         webServer = JaredWebServer(sender: jaredMock, configuration: configuration)
     }
     
     override func tearDown() {
+        webServer?.stop()
+        webServer = nil
+        jaredMock = nil
     }
     
     func testInvalidRequest() {
         // Start the server
-        webServer.start()
+        XCTAssertTrue(webServer.start(), "Server should start successfully for the test")
+        let requestURL = URL(string: "http://localhost:\(webServer.listeningPort)/message")!
         
         // Make an invalid post request
-        var request = URLRequest(url: URL(string: "http://localhost:3005/message")!)
+        var request = URLRequest(url: requestURL)
         request.httpMethod = "POST"
         request.httpBody = JaredWebServerTest.invalidBody.data(using: String.Encoding.utf8)
         request.addValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
@@ -63,10 +68,11 @@ class JaredWebServerTest: XCTestCase {
     
     func testValidRequest() {
         // Start the server
-        webServer.start()
+        XCTAssertTrue(webServer.start(), "Server should start successfully for the test")
+        let requestURL = URL(string: "http://localhost:\(webServer.listeningPort)/message")!
         
         // Make an invalid post request
-        var request = URLRequest(url: URL(string: "http://localhost:3005/message")!)
+        var request = URLRequest(url: requestURL)
         request.httpMethod = "POST"
         request.httpBody = JaredWebServerTest.validBody.data(using: String.Encoding.utf8)
         request.addValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
@@ -81,7 +87,16 @@ class JaredWebServerTest: XCTestCase {
         wait(for: [promise], timeout: 5)
         XCTAssertEqual(httpResponse?.statusCode, 200, "Valid request is successful")
         XCTAssertEqual(jaredMock.calls.count, 1, "One message sent")
-        XCTAssertEqual((jaredMock.calls[0].body as! TextBody).message, "clandestine meetings", "Message was correct")
-        XCTAssertEqual((jaredMock.calls[0].recipient as! AbstractRecipient).handle, "handle@email.com", "recipient email is correct")
+        XCTAssertEqual((jaredMock.calls[0].body as! TextBody).message, "[TEST ONLY] JaredWebServerTest", "Message was correct")
+        XCTAssertEqual((jaredMock.calls[0].recipient as! AbstractRecipient).handle, "jared-webserver-test@example.invalid", "recipient email is correct")
+    }
+
+    func testStartFailsWhenPortAlreadyInUse() {
+        XCTAssertTrue(webServer.start(), "Primary server should start successfully")
+
+        let conflictingServer = JaredWebServer(sender: JaredMock(),
+                                               configuration: WebserverConfiguration(port: webServer.listeningPort))
+
+        XCTAssertFalse(conflictingServer.start(), "Second server should fail to bind an in-use port")
     }
 }

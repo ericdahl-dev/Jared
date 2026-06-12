@@ -9,6 +9,14 @@
 import XCTest
 import JaredFramework
 
+private final class DiskAccessDelegateSpy: DiskAccessDelegate {
+    private(set) var didDisplayAccessError = false
+
+    func displayAccessError() {
+        didDisplayAccessError = true
+    }
+}
+
 class DatabaseHandlerTest: XCTestCase {
     var testDatabaseLocation: URL! = nil
     var helper: DatabaseTestHelper! = nil
@@ -49,5 +57,58 @@ class DatabaseHandlerTest: XCTestCase {
         sleep(10)
         
         XCTAssertEqual(router.messages.count, 2, "Both messages routed")
+    }
+
+    func testInitDoesNotCreateMissingWALFile() throws {
+        let tempDirectory = try makeTemporaryDatabaseDirectory()
+        let tempDatabaseURL = tempDirectory.appendingPathComponent("scaffold.db")
+        try FileManager.default.copyItem(at: testDatabaseLocation, to: tempDatabaseURL)
+        let walURL = URL(fileURLWithPath: tempDatabaseURL.path + "-wal")
+        try? FileManager.default.removeItem(at: walURL)
+        var handler: DatabaseHandler? = nil
+        defer {
+            handler = nil
+            try? FileManager.default.removeItem(at: tempDirectory)
+        }
+
+        handler = DatabaseHandler(router: router, databaseLocation: tempDatabaseURL, diskAccessDelegate: nil)
+        XCTAssertNotNil(handler)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: walURL.path), "Init should not create a missing WAL file")
+    }
+
+    func testInitCanOpenReadOnlyDatabaseWithoutAccessError() throws {
+        let tempDirectory = try makeTemporaryDatabaseDirectory()
+        let tempDatabaseURL = tempDirectory.appendingPathComponent("scaffold.db")
+        try FileManager.default.copyItem(at: testDatabaseLocation, to: tempDatabaseURL)
+
+        let delegate = DiskAccessDelegateSpy()
+        var handler: DatabaseHandler? = nil
+        let previousValue = UserDefaults.standard.object(forKey: JaredConstants.fullDiskAccess)
+        defer {
+            handler = nil
+            chmod(tempDirectory.path, 0o755)
+            chmod(tempDatabaseURL.path, 0o644)
+            try? FileManager.default.removeItem(at: tempDirectory)
+            if let previousValue {
+                UserDefaults.standard.set(previousValue, forKey: JaredConstants.fullDiskAccess)
+            } else {
+                UserDefaults.standard.removeObject(forKey: JaredConstants.fullDiskAccess)
+            }
+        }
+
+        XCTAssertEqual(chmod(tempDatabaseURL.path, 0o444), 0, "Should make DB read-only")
+        XCTAssertEqual(chmod(tempDirectory.path, 0o555), 0, "Should make DB directory non-writable")
+
+        handler = DatabaseHandler(router: router, databaseLocation: tempDatabaseURL, diskAccessDelegate: delegate)
+
+        XCTAssertNotNil(handler)
+        XCTAssertFalse(delegate.didDisplayAccessError, "Read-only DB should open without triggering disk access error")
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: JaredConstants.fullDiskAccess), "Read-only DB open should mark full disk access as available")
+    }
+
+    private func makeTemporaryDatabaseDirectory() throws -> URL {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
     }
 }
