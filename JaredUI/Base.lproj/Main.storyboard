@@ -514,10 +514,10 @@ All rights reserved.</string>
                     <window key="window" title="Jared" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" visibleAtLaunch="NO" animationBehavior="default" tabbingMode="disallowed" id="IQv-IB-iLA">
                         <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES"/>
                         <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-                        <rect key="contentRect" x="196" y="240" width="460" height="520"/>
+                        <rect key="contentRect" x="196" y="240" width="460" height="700"/>
                         <rect key="screenRect" x="0.0" y="0.0" width="1440" height="877"/>
-                        <value key="minSize" type="size" width="460" height="520"/>
-                        <value key="maxSize" type="size" width="460" height="520"/>
+                        <value key="minSize" type="size" width="460" height="700"/>
+                        <value key="maxSize" type="size" width="460" height="700"/>
                         <connections>
                             <outlet property="delegate" destination="B8D-0N-5wS" id="Aof-kT-3KK"/>
                         </connections>
@@ -535,7 +535,7 @@ All rights reserved.</string>
             <objects>
                 <viewController title="Jared" storyboardIdentifier="APIKeyPanel" id="XfG-lQ-9wD" customClass="ViewController" customModule="Jared" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" wantsLayer="YES" id="m2S-Jp-Qdl">
-                        <rect key="frame" x="0.0" y="0.0" width="460" height="520"/>
+                        <rect key="frame" x="0.0" y="0.0" width="460" height="700"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                     </view>
                     <touchBar key="touchBar" id="dwN-ab-4QG">
