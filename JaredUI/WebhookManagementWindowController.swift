@@ -134,13 +134,13 @@ class WebhookManagementWindowController: NSWindowController,
 
     convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 720, height: 480),
+            contentRect: NSRect(x: 0, y: 0, width: 780, height: 500),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "Webhook Management"
-        window.minSize = NSSize(width: 600, height: 380)
+        window.minSize = NSSize(width: 680, height: 400)
         self.init(window: window)
         setupUI()
         loadWebhooks()
@@ -161,8 +161,6 @@ class WebhookManagementWindowController: NSWindowController,
         let split = NSSplitView()
         split.isVertical = true
         split.dividerStyle = .thin
-        split.autoresizingMask = [.width, .height]
-        split.frame = cv.bounds
         cv.addSubview(split)
 
         // ── Left panel ─────────────────────────────────────────────
@@ -259,15 +257,48 @@ class WebhookManagementWindowController: NSWindowController,
             split.setPosition(220, ofDividerAt: 0)
         }
 
-        // Done button in titlebar area (top right)
+        // Bottom bar with Done button
+        let bottomBar = NSView()
+        bottomBar.translatesAutoresizingMaskIntoConstraints = false
+        bottomBar.wantsLayer = true
+        bottomBar.layer?.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.0).cgColor
+        cv.addSubview(bottomBar)
+
+        let sep2 = NSView()
+        sep2.translatesAutoresizingMaskIntoConstraints = false
+        sep2.wantsLayer = true
+        sep2.layer?.backgroundColor = NSColor.separatorColor.cgColor
+        cv.addSubview(sep2)
+
         let doneBtn = NSButton(title: "Done", target: self, action: #selector(closeWindow))
         doneBtn.bezelStyle = .rounded
         doneBtn.keyEquivalent = "\r"
         doneBtn.translatesAutoresizingMaskIntoConstraints = false
-        cv.addSubview(doneBtn)
+        bottomBar.addSubview(doneBtn)
+
         NSLayoutConstraint.activate([
-            doneBtn.topAnchor.constraint(equalTo: cv.topAnchor, constant: 10),
-            doneBtn.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -14),
+            sep2.leadingAnchor.constraint(equalTo: cv.leadingAnchor),
+            sep2.trailingAnchor.constraint(equalTo: cv.trailingAnchor),
+            sep2.heightAnchor.constraint(equalToConstant: 1),
+
+            bottomBar.leadingAnchor.constraint(equalTo: cv.leadingAnchor),
+            bottomBar.trailingAnchor.constraint(equalTo: cv.trailingAnchor),
+            bottomBar.bottomAnchor.constraint(equalTo: cv.bottomAnchor),
+            bottomBar.heightAnchor.constraint(equalToConstant: 44),
+            sep2.bottomAnchor.constraint(equalTo: bottomBar.topAnchor),
+
+            doneBtn.trailingAnchor.constraint(equalTo: bottomBar.trailingAnchor, constant: -16),
+            doneBtn.centerYAnchor.constraint(equalTo: bottomBar.centerYAnchor),
+        ])
+
+        // Shrink split view to leave room for bottom bar
+        split.autoresizingMask = []
+        split.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            split.topAnchor.constraint(equalTo: cv.topAnchor),
+            split.leadingAnchor.constraint(equalTo: cv.leadingAnchor),
+            split.trailingAnchor.constraint(equalTo: cv.trailingAnchor),
+            split.bottomAnchor.constraint(equalTo: sep2.topAnchor),
         ])
     }
 
@@ -278,8 +309,11 @@ class WebhookManagementWindowController: NSWindowController,
 
         urlField = NSTextField()
         urlField.placeholderString = "https://example.com/webhook"
-        urlField.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        urlField.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
         urlField.bezelStyle = .roundedBezel
+        urlField.usesSingleLineMode = false
+        urlField.cell?.wraps = true
+        urlField.cell?.isScrollable = false
 
         enabledCheck = NSButton(checkboxWithTitle: "Enabled", target: nil, action: nil)
 
@@ -295,19 +329,26 @@ class WebhookManagementWindowController: NSWindowController,
         deliveryStatus.textColor = .secondaryLabelColor
         deliveryStatus.font = .systemFont(ofSize: 12)
 
-        saveBtn   = actionButton("Save Changes",       isPrimary: true)
-        deleteBtn = actionButton("Delete",             isPrimary: false)
-        openBtn   = actionButton("Open Endpoint",      isPrimary: false)
-        testBtn   = actionButton("Send Test Payload",  isPrimary: false)
+        saveBtn   = actionButton("Save Changes",      isPrimary: true)
+        deleteBtn = actionButton("Delete",            isPrimary: false)
+        openBtn   = actionButton("Open Endpoint",     isPrimary: false)
+        testBtn   = actionButton("Send Test Payload", isPrimary: false)
         saveBtn.action   = #selector(saveChanges)
         deleteBtn.action = #selector(deleteSelected)
         openBtn.action   = #selector(openEndpoint)
         testBtn.action   = #selector(sendTest)
         for b in [saveBtn!, deleteBtn!, openBtn!, testBtn!] { b.target = self }
 
-        let buttonRow = NSStackView(views: [saveBtn, deleteBtn, openBtn, testBtn])
-        buttonRow.orientation = .horizontal
-        buttonRow.spacing = 8
+        let topBtnRow    = NSStackView(views: [saveBtn, deleteBtn])
+        topBtnRow.orientation = .horizontal
+        topBtnRow.spacing = 8
+        let bottomBtnRow = NSStackView(views: [openBtn, testBtn])
+        bottomBtnRow.orientation = .horizontal
+        bottomBtnRow.spacing = 8
+        let buttonRow = NSStackView(views: [topBtnRow, bottomBtnRow])
+        buttonRow.orientation = .vertical
+        buttonRow.alignment = .leading
+        buttonRow.spacing = 6
 
         let sep = NSBox(); sep.boxType = .separator
 
@@ -359,6 +400,7 @@ class WebhookManagementWindowController: NSWindowController,
             urlField.topAnchor.constraint(equalTo: urlLabel.bottomAnchor, constant: 4),
             urlField.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
             urlField.trailingAnchor.constraint(equalTo: selectedTitle.trailingAnchor),
+            urlField.heightAnchor.constraint(greaterThanOrEqualToConstant: 42),
 
             enableRow.topAnchor.constraint(equalTo: urlField.bottomAnchor, constant: 10),
             enableRow.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
