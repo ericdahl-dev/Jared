@@ -19,6 +19,19 @@ class DatabaseHandler {
 			INNER JOIN chat ON chat_handle_join.chat_id = chat.ROWID
 			WHERE chat.chat_identifier = ?
 	"""
+    private static let buddyQuery = """
+		SELECT handle.id
+			FROM chat_handle_join INNER JOIN handle ON chat_handle_join.handle_id = handle.ROWID
+			INNER JOIN chat ON chat_handle_join.chat_id = chat.ROWID
+			WHERE chat.chat_identifier = ? OR chat.guid = ?
+	"""
+    private static let buddyByMessageQuery = """
+		SELECT handle.id
+			FROM chat_message_join
+			INNER JOIN chat_handle_join ON chat_handle_join.chat_id = chat_message_join.chat_id
+			INNER JOIN handle ON chat_handle_join.handle_id = handle.ROWID
+			WHERE chat_message_join.message_id = ?
+	"""
     private static let attachmentQuery = """
 	SELECT ROWID,
 	filename,
@@ -58,6 +71,16 @@ class DatabaseHandler {
         walContinuation?.yield(())
     }
 
+    /// Stops background polling so tests can query deterministically.
+    internal func stopForTesting() {
+        backgroundTask?.cancel()
+        backgroundTask = nil
+        walContinuation?.finish()
+        walContinuation = nil
+        walSource?.cancel()
+        walSource = nil
+    }
+
     /// Convenience init for testing: routes messages from an injected MessageSource without opening SQLite.
     init(messageSource: MessageSource, router: RouterDelegate) {
         self.router = router
@@ -66,7 +89,7 @@ class DatabaseHandler {
         }
     }
     
-    init(router: RouterDelegate, databaseLocation: URL, diskAccessDelegate: DiskAccessDelegate?) {
+    init(router: RouterDelegate, databaseLocation: URL, diskAccessDelegate: DiskAccessDelegate?, enableBackgroundPolling: Bool = true) {
         self.router = router
         
         if sqlite3_open_v2(databaseLocation.path, &db, SQLITE_OPEN_READONLY, nil) != SQLITE_OK {
@@ -79,8 +102,10 @@ class DatabaseHandler {
         UserDefaults.standard.set(true, forKey: JaredConstants.fullDiskAccess)
         
         querySinceID = getCurrentMaxRecordID()
-        start()
-        startWALWatcher(databaseLocation: databaseLocation)
+        if enableBackgroundPolling {
+            start()
+            startWALWatcher(databaseLocation: databaseLocation)
+        }
     }
     
     deinit {
@@ -208,8 +233,83 @@ class DatabaseHandler {
             
             People.append(Person(givenName: contact?.givenName, handle: handle, isMe: false))
         }
+
+        // 1:1 chats also join two handles; only treat as group when GUID uses ;+; or 3+ participants.
+        let isGroupChat = chatGUID?.contains(";+;") == true || People.count > 2
+        guard isGroupChat, !People.isEmpty else {
+            return nil
+        }
         
         return Group(name: groupName, handle: chatGUID ?? chatHandle, participants: People)
+    }
+
+    private func cleanHandle(_ handle: String) -> String {
+        handle.hasPrefix("mailto:") ? String(handle.dropFirst(7)) : handle
+    }
+
+    private func retrieveBuddyHandle(chatID: String, excludingHandle: String) -> String? {
+        var statement: OpaquePointer?
+
+        if sqlite3_prepare_v2(db, DatabaseHandler.buddyQuery, -1, &statement, nil) != SQLITE_OK {
+            let errmsg = String(cString: sqlite3_errmsg(db)!)
+            print("error preparing buddy select: \(errmsg)")
+            return nil
+        }
+
+        defer {
+            if sqlite3_finalize(statement) != SQLITE_OK {
+                let errmsg = String(cString: sqlite3_errmsg(db)!)
+                print("error finalizing buddy prepared statement: \(errmsg)")
+            }
+        }
+
+        if sqlite3_bind_text(statement, 1, chatID, -1, SQLITE_TRANSIENT) != SQLITE_OK ||
+            sqlite3_bind_text(statement, 2, chatID, -1, SQLITE_TRANSIENT) != SQLITE_OK {
+            let errmsg = String(cString: sqlite3_errmsg(db)!)
+            print("failure binding buddy query: \(errmsg)")
+            return nil
+        }
+
+        return firstBuddyHandle(from: statement, excludingHandle: excludingHandle)
+    }
+
+    private func retrieveBuddyHandle(forMessage rowID: String, excludingHandle: String) -> String? {
+        var statement: OpaquePointer?
+
+        if sqlite3_prepare_v2(db, DatabaseHandler.buddyByMessageQuery, -1, &statement, nil) != SQLITE_OK {
+            let errmsg = String(cString: sqlite3_errmsg(db)!)
+            print("error preparing buddy-by-message select: \(errmsg)")
+            return nil
+        }
+
+        defer {
+            if sqlite3_finalize(statement) != SQLITE_OK {
+                let errmsg = String(cString: sqlite3_errmsg(db)!)
+                print("error finalizing buddy-by-message prepared statement: \(errmsg)")
+            }
+        }
+
+        if sqlite3_bind_text(statement, 1, rowID, -1, SQLITE_TRANSIENT) != SQLITE_OK {
+            let errmsg = String(cString: sqlite3_errmsg(db)!)
+            print("failure binding buddy-by-message query: \(errmsg)")
+            return nil
+        }
+
+        return firstBuddyHandle(from: statement, excludingHandle: excludingHandle)
+    }
+
+    private func firstBuddyHandle(from statement: OpaquePointer?, excludingHandle: String) -> String? {
+        let excluding = cleanHandle(excludingHandle)
+        while sqlite3_step(statement) == SQLITE_ROW {
+            guard let handle = unwrapStringColumn(for: statement, at: 0) else {
+                continue
+            }
+            if cleanHandle(handle) != excluding {
+                return handle
+            }
+        }
+
+        return nil
     }
     
     private func unwrapStringColumn(for sqlStatement: OpaquePointer?, at column: Int32) -> String? {
@@ -272,7 +372,8 @@ class DatabaseHandler {
         return attachments
     }
     
-    private func queryNewRecords() -> Double {
+    @discardableResult
+    internal func queryNewRecords() -> Double {
         let start = Date()
         defer { statement = nil }
         
@@ -303,42 +404,92 @@ class DatabaseHandler {
             let guid = unwrapStringColumn(for: statement, at: 11)
             let destinationCallerId = unwrapStringColumn(for: statement, at: 12)
             NSLog("Processing rowID=%@", rowID ?? "nil")
-            
-            querySinceID = rowID;
 
-            guard !isFromMe else { continue }
-            
-            if senderHandleOptional == nil {
-                let raw = destinationCallerId ?? destinationOptional
-                senderHandleOptional = raw?.hasPrefix("mailto:") == true ? String(raw!.dropFirst(7)) : raw
-            }
-            
-            guard let senderHandle = senderHandleOptional, let text = textOptional, let destination = destinationOptional else {
-                NSLog("guard failed: sender=%@ text=%@ dest=%@", senderHandleOptional ?? "nil", textOptional ?? "nil", destinationOptional ?? "nil")
+            guard let text = textOptional, let destination = destinationOptional else {
+                NSLog("guard failed: text=%@ dest=%@", textOptional ?? "nil", destinationOptional ?? "nil")
                 continue
             }
-            
-            let cleanDestination = destination.hasPrefix("mailto:") ? String(destination.dropFirst(7)) : destination
-            let cleanSenderHandle = senderHandle.hasPrefix("mailto:") ? String(senderHandle.dropFirst(7)) : senderHandle
-            let buddyName = ContactHelper.RetreiveContact(handle: cleanSenderHandle)?.givenName
-            let myName = ContactHelper.RetreiveContact(handle: cleanDestination)?.givenName
+
+            let cleanDestination = cleanHandle(destination)
+            let group = retrieveGroupInfo(chatID: roomName)
             let sender: Person
             let recipient: RecipientEntity
-            let group = retrieveGroupInfo(chatID: roomName)
-            
-            if (isFromMe) {
-                sender = Person(givenName: myName, handle: cleanDestination, isMe: true)
-                recipient = group ?? Person(givenName: buddyName, handle: cleanSenderHandle, isMe: false)
+
+            if isFromMe {
+                let myHandle = cleanHandle(destinationCallerId ?? destination)
+                guard !myHandle.isEmpty else {
+                    NSLog("guard failed: could not resolve outbound sender handle (dest=%@ room=%@)", cleanDestination, roomName ?? "nil")
+                    continue
+                }
+
+                var buddyHandle = senderHandleOptional.map(cleanHandle(_:))
+                if buddyHandle == nil || buddyHandle == myHandle {
+                    if let rowID,
+                       let resolved = retrieveBuddyHandle(forMessage: rowID, excludingHandle: myHandle) {
+                        buddyHandle = cleanHandle(resolved)
+                    } else if let chatID = roomName,
+                              let resolved = retrieveBuddyHandle(chatID: chatID, excludingHandle: myHandle) {
+                        buddyHandle = cleanHandle(resolved)
+                    }
+                }
+
+                guard let buddyHandle, buddyHandle != myHandle else {
+                    NSLog("guard failed: could not resolve outbound recipient (my=%@ room=%@)", myHandle, roomName ?? "nil")
+                    continue
+                }
+
+                let buddyName = ContactHelper.RetreiveContact(handle: buddyHandle)?.givenName
+                let myName = ContactHelper.RetreiveContact(handle: myHandle)?.givenName
+                sender = Person(givenName: myName, handle: myHandle, isMe: true)
+                recipient = group ?? Person(givenName: buddyName, handle: buddyHandle, isMe: false)
             } else {
+                var cleanSenderHandle = senderHandleOptional.map(cleanHandle(_:))
+                let hadHandleIdJoin = senderHandleOptional != nil
+
+                if cleanSenderHandle == nil {
+                    if let rowID,
+                       let buddyHandle = retrieveBuddyHandle(forMessage: rowID, excludingHandle: cleanDestination) {
+                        cleanSenderHandle = cleanHandle(buddyHandle)
+                    } else if let chatID = roomName,
+                              let buddyHandle = retrieveBuddyHandle(chatID: chatID, excludingHandle: cleanDestination) {
+                        cleanSenderHandle = cleanHandle(buddyHandle)
+                    } else {
+                        let raw = destinationCallerId ?? destinationOptional
+                        cleanSenderHandle = raw.map(cleanHandle(_:))
+                    }
+                } else if cleanSenderHandle == cleanDestination {
+                    if let rowID,
+                       let buddyHandle = retrieveBuddyHandle(forMessage: rowID, excludingHandle: cleanDestination) {
+                        cleanSenderHandle = cleanHandle(buddyHandle)
+                    } else if let chatID = roomName,
+                              let buddyHandle = retrieveBuddyHandle(chatID: chatID, excludingHandle: cleanDestination) {
+                        cleanSenderHandle = cleanHandle(buddyHandle)
+                    }
+                }
+
+                guard let cleanSenderHandle else {
+                    NSLog("guard failed: could not resolve inbound sender (dest=%@ room=%@)", cleanDestination, roomName ?? "nil")
+                    continue
+                }
+                if !hadHandleIdJoin && cleanSenderHandle == cleanDestination {
+                    NSLog("guard failed: could not resolve inbound sender (sender=%@ dest=%@ room=%@)", cleanSenderHandle, cleanDestination, roomName ?? "nil")
+                    continue
+                }
+
+                let buddyName = ContactHelper.RetreiveContact(handle: cleanSenderHandle)?.givenName
+                let myName = ContactHelper.RetreiveContact(handle: cleanDestination)?.givenName
                 sender = Person(givenName: buddyName, handle: cleanSenderHandle, isMe: false)
                 recipient = group ?? Person(givenName: myName, handle: cleanDestination, isMe: true)
             }
-            
+
             let message = Message(body: TextBody(text), date: Date(timeIntervalSince1970: epochDate), sender: sender, recipient: recipient, guid: guid, attachments: hasAttachment ? retrieveAttachments(forMessage: rowID ?? "") : [],
                 sendStyle: sendStyle, associatedMessageType: Int(associatedMessageType), associatedMessageGUID: associatedMessageGUID)
-            
-            NSLog("routing text=%@ sender=%@", text, cleanSenderHandle)
+
+            NSLog("routing text=%@ sender=%@ isFromMe=%d", text, sender.handle, isFromMe ? 1 : 0)
             router?.route(message: message)
+            if let rowID {
+                querySinceID = rowID
+            }
         }
         
         if sqlite3_finalize(statement) != SQLITE_OK {

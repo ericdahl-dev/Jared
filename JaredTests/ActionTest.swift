@@ -10,29 +10,30 @@ import XCTest
 import JaredFramework
 
 class ActionTest: XCTestCase {
-    static let removeLikeJSON = "{\"type\":\"like\",\"targetGUID\":\"goodGUID\",\"event\":\"removed\"}"
-    static let placeLoveJSON = "{\"type\":\"love\",\"targetGUID\":\"goodGUID\",\"event\":\"placed\"}"
-    override func setUp() {
-    }
-    
-    override func tearDown() {
-    }
-    
+    override func setUp() {}
+    override func tearDown() {}
+
     func testFromActionTypeInt() {
         let targetGUID = "goodGUID"
         let encoder = JSONEncoder()
         var action = Action(actionTypeInt: 3001, targetGUID: targetGUID)
-        
+
         XCTAssertEqual(action.event, .removed, "Event marked as removed")
         XCTAssertEqual(action.type, .like, "Type is correct")
-        XCTAssertEqual(String(data: try! encoder.encode(action), encoding: .utf8),
-                       ActionTest.removeLikeJSON, "Encoding works as expected")
-        
+        let removeLikeData = try! encoder.encode(action)
+        let removeLikeDict = try! JSONSerialization.jsonObject(with: removeLikeData) as! [String: String]
+        XCTAssertEqual(removeLikeDict["type"], "like", "Encoding round-trips type")
+        XCTAssertEqual(removeLikeDict["event"], "removed", "Encoding round-trips event")
+        XCTAssertEqual(removeLikeDict["targetGUID"], targetGUID, "Encoding round-trips targetGUID")
+
         action = Action(actionTypeInt: 2000, targetGUID: targetGUID)
-        
-        XCTAssertEqual(action.event, .placed, "Event marked as removed")
+
+        XCTAssertEqual(action.event, .placed, "Event marked as placed")
         XCTAssertEqual(action.type, .love, "Type is correct")
-        XCTAssertEqual(String(data: try! encoder.encode(action), encoding: .utf8),
-                       ActionTest.placeLoveJSON, "Encoding works as expected")
+        let placeLoveData = try! encoder.encode(action)
+        let placeLoveDict = try! JSONSerialization.jsonObject(with: placeLoveData) as! [String: String]
+        XCTAssertEqual(placeLoveDict["type"], "love", "Encoding round-trips type")
+        XCTAssertEqual(placeLoveDict["event"], "placed", "Encoding round-trips event")
+        XCTAssertEqual(placeLoveDict["targetGUID"], targetGUID, "Encoding round-trips targetGUID")
     }
 }

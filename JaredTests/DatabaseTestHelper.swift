@@ -42,11 +42,15 @@ INSERT INTO "main"."chat_message_join" ("chat_id", "message_id", "message_date")
     }
     
     deinit {
+        close()
+    }
+
+    func close() {
+        guard let db else { return }
         if sqlite3_close(db) != SQLITE_OK {
             print("error closing database")
         }
-        
-        db = nil
+        self.db = nil
     }
     
     func insertHandle(id: String, service: String) -> Int {
@@ -129,7 +133,7 @@ INSERT INTO "main"."chat_message_join" ("chat_id", "message_id", "message_date")
         }
     }
     
-    func insertMessage(guid: String, messageText: String, handleID: Int, service: String, account: String, accountGuid: String, date: Int?, dateRead: Int?, dateDelivered: Int?, isFromMe: Bool, hasAttachments: Bool, destinationCallerID: String, roomNames: String? = nil, associatedMessageGUID: String? = nil, sendStyleId: String? = nil, associatedMessageType: Int? = nil) -> Int {
+    func insertMessage(guid: String, messageText: String, handleID: Int?, service: String, account: String, accountGuid: String, date: Int?, dateRead: Int?, dateDelivered: Int?, isFromMe: Bool, hasAttachments: Bool, destinationCallerID: String, roomNames: String? = nil, associatedMessageGUID: String? = nil, sendStyleId: String? = nil, associatedMessageType: Int? = nil) -> Int {
         var statement: OpaquePointer?
         
         if sqlite3_prepare_v2(db, insertMessageQuery, -1, &statement, nil) != SQLITE_OK {
@@ -145,9 +149,14 @@ INSERT INTO "main"."chat_message_join" ("chat_id", "message_id", "message_date")
             let errmsg = String(cString: sqlite3_errmsg(db)!)
             print("failure binding foo: \(errmsg)")
         }
-        if sqlite3_bind_int(statement, 3, Int32(handleID)) != SQLITE_OK {
+        if let handleID {
+            if sqlite3_bind_int(statement, 3, Int32(handleID)) != SQLITE_OK {
+                let errmsg = String(cString: sqlite3_errmsg(db)!)
+                print("failure binding foo: \(errmsg)")
+            }
+        } else if sqlite3_bind_null(statement, 3) != SQLITE_OK {
             let errmsg = String(cString: sqlite3_errmsg(db)!)
-            print("failure binding foo: \(errmsg)")
+            print("failure binding null handle_id: \(errmsg)")
         }
         if sqlite3_bind_text(statement, 4, service, -1, SQLITE_TRANSIENT) != SQLITE_OK {
             let errmsg = String(cString: sqlite3_errmsg(db)!)
