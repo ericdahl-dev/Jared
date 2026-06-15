@@ -37,6 +37,8 @@ class ViewController: NSViewController, DiskAccessDelegate {
     private var contactsRow: StatusRowView!
     private var sendRow: StatusRowView!
 
+    private var tunnelPublicURL: URL?
+    private var tunnelError: String?
     private var defaults: UserDefaults = .standard
     private let observeKeys = [
         JaredConstants.jaredIsDisabled,
@@ -55,11 +57,18 @@ class ViewController: NSViewController, DiskAccessDelegate {
         _ = PermissionsHelper.canSendMessages()
         buildUI()
         observeKeys.forEach { defaults.addObserver(self, forKeyPath: $0, options: .new, context: nil) }
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(tunnelStateDidChange(_:)),
+            name: TunnelManager.publicURLDidChangeNotification,
+            object: nil
+        )
         updateTouchBarButton()
     }
 
     deinit {
         observeKeys.forEach { defaults.removeObserver(self, forKeyPath: $0) }
+        NotificationCenter.default.removeObserver(self)
         if #available(OSX 10.12.2, *) {
             view.window?.unbind(NSBindingName(rawValue: #keyPath(touchBar)))
         }
@@ -329,7 +338,30 @@ class ViewController: NSViewController, DiskAccessDelegate {
                 self.RestApiStatusImage?.image        = NSImage(named: NSImage.statusUnavailableName)
                 self.EnableDisableRestApiUiButton?.title = "Enable API"
             } else {
-                self.apiRow?.update(statusText: "Running", state: .on, buttonTitle: "Disable")
+                let config = ConfigurationHelper.getConfiguration()
+                let tunnelEnabled = config.webServer.tunnel?.enabled == true
+                let needsAuth = tunnelEnabled && (config.webServer.bearerToken?.isEmpty ?? true)
+                let statusText: String
+                let state: RowState
+
+                if let tunnelError = self.tunnelError, !tunnelError.isEmpty {
+                    statusText = tunnelError
+                    state = .error
+                } else if let tunnelPublicURL = self.tunnelPublicURL {
+                    statusText = tunnelPublicURL.absoluteString
+                    state = .on
+                } else if needsAuth {
+                    statusText = "Running — set bearerToken before enabling tunnel"
+                    state = .warning
+                } else if tunnelEnabled {
+                    statusText = "Running — starting tunnel…"
+                    state = .warning
+                } else {
+                    statusText = "Running"
+                    state = .on
+                }
+
+                self.apiRow?.update(statusText: statusText, state: state, buttonTitle: "Disable")
                 self.RestApiStatusLabel?.stringValue  = "REST API is currently enabled"
                 self.RestApiStatusImage?.image        = NSImage(named: NSImage.statusAvailableName)
                 self.EnableDisableRestApiUiButton?.title = "Disable API"
@@ -425,6 +457,12 @@ class ViewController: NSViewController, DiskAccessDelegate {
 
     @IBAction func EnableDisableRestApiAction(_ sender: Any) {
         defaults.set(!defaults.bool(forKey: JaredConstants.restApiIsDisabled), forKey: JaredConstants.restApiIsDisabled)
+    }
+
+    @objc private func tunnelStateDidChange(_ notification: Notification) {
+        tunnelPublicURL = notification.userInfo?[TunnelManager.publicURLUserInfoKey] as? URL
+        tunnelError = notification.userInfo?[TunnelManager.lastErrorUserInfoKey] as? String
+        updateTouchBarButton()
     }
 
     @IBAction func EnableDisableLLMAction(_ sender: Any) {
@@ -529,6 +567,7 @@ final class StatusRowView: NSView {
 
         statusLabel.font      = .systemFont(ofSize: 12)
         statusLabel.textColor = .secondaryLabelColor
+        statusLabel.isSelectable = true
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
 
         actionButton.bezelStyle = .rounded

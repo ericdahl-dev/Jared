@@ -91,6 +91,51 @@ class JaredWebServerTest: XCTestCase {
         XCTAssertEqual((jaredMock.calls[0].recipient as! AbstractRecipient).handle, "jared-webserver-test@example.invalid", "recipient email is correct")
     }
 
+    func testBearerTokenRejectsMissingAuthorization() {
+        webServer = JaredWebServer(sender: jaredMock, configuration: WebserverConfiguration(port: 0, bearerToken: "secret"))
+        XCTAssertTrue(webServer.start())
+        let requestURL = URL(string: "http://localhost:\(webServer.listeningPort)/message")!
+
+        var request = URLRequest(url: requestURL)
+        request.httpMethod = "POST"
+        request.httpBody = JaredWebServerTest.validBody.data(using: .utf8)
+        request.addValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+
+        var httpResponse: HTTPURLResponse?
+        let promise = XCTestExpectation(description: "unauthorized response received")
+        URLSession.shared.dataTask(with: request) { _, response, _ in
+            httpResponse = response as? HTTPURLResponse
+            promise.fulfill()
+        }.resume()
+
+        wait(for: [promise], timeout: 5)
+        XCTAssertEqual(httpResponse?.statusCode, 401)
+        XCTAssertEqual(jaredMock.calls.count, 0)
+    }
+
+    func testBearerTokenAcceptsValidAuthorization() {
+        webServer = JaredWebServer(sender: jaredMock, configuration: WebserverConfiguration(port: 0, bearerToken: "secret"))
+        XCTAssertTrue(webServer.start())
+        let requestURL = URL(string: "http://localhost:\(webServer.listeningPort)/message")!
+
+        var request = URLRequest(url: requestURL)
+        request.httpMethod = "POST"
+        request.httpBody = JaredWebServerTest.validBody.data(using: .utf8)
+        request.addValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        request.addValue("Bearer secret", forHTTPHeaderField: "Authorization")
+
+        var httpResponse: HTTPURLResponse?
+        let promise = XCTestExpectation(description: "authorized response received")
+        URLSession.shared.dataTask(with: request) { _, response, _ in
+            httpResponse = response as? HTTPURLResponse
+            promise.fulfill()
+        }.resume()
+
+        wait(for: [promise], timeout: 5)
+        XCTAssertEqual(httpResponse?.statusCode, 200)
+        XCTAssertEqual(jaredMock.calls.count, 1)
+    }
+
     func testStartFailsWhenPortAlreadyInUse() {
         XCTAssertTrue(webServer.start(), "Primary server should start successfully")
 

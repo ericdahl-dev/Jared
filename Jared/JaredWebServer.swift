@@ -8,9 +8,11 @@ class JaredWebServer: NSObject {
     var server: Server!
     var port: Int!
     var sender: MessageSender
+    private let bearerToken: String?
     
     init(sender: MessageSender, configuration: WebserverConfiguration) {
         self.sender = sender
+        self.bearerToken = configuration.bearerToken
         super.init()
         defaults = UserDefaults.standard
         server = Server()
@@ -66,6 +68,14 @@ class JaredWebServer: NSObject {
     }
     
     private func handleMessageRequest(request: HTTPRequest) -> HTTPResponse {
+        if !isAuthorized(request) {
+            return HTTPResponse(
+                HTTPStatus(code: 401, phrase: "Unauthorized"),
+                headers: HTTPHeaders(),
+                content: "Missing or invalid bearer token"
+            )
+        }
+
         // Attempt to decode the request body to the MessageRequest struct
         do {
             let parsedBody = try JSONDecoder().decode(MessageRequest.self, from: request.body)
@@ -83,5 +93,11 @@ class JaredWebServer: NSObject {
         } catch {
             return HTTPResponse(HTTPStatus(code: 400, phrase: "Bad Request"), headers: HTTPHeaders(), content: error.localizedDescription)
         }
+    }
+
+    private func isAuthorized(_ request: HTTPRequest) -> Bool {
+        guard let token = bearerToken, !token.isEmpty else { return true }
+        guard let authorization = request.headers["Authorization"] else { return false }
+        return authorization == "Bearer \(token)"
     }
 }

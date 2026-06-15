@@ -49,6 +49,9 @@ class DatabaseHandler {
     var refreshSeconds = 5.0
     var statement: OpaquePointer? = nil
     var router: RouterDelegate?
+    /// Resolves a handle to a contact's given name. Injectable so tests can avoid
+    /// the Contacts XPC service, which hangs in the xctest sandbox.
+    private let contactNameResolver: (String) -> String?
     private var walSource: DispatchSourceFileSystemObject?
     private var walContinuation: AsyncStream<Void>.Continuation?
     private var backgroundTask: Task<Void, Never>?
@@ -61,13 +64,15 @@ class DatabaseHandler {
     /// Convenience init for testing: routes messages from an injected MessageSource without opening SQLite.
     init(messageSource: MessageSource, router: RouterDelegate) {
         self.router = router
+        self.contactNameResolver = { ContactHelper.RetreiveContact(handle: $0)?.givenName }
         messageSource.onMessage = { [weak self] message in
             self?.router?.route(message: message)
         }
     }
     
-    init(router: RouterDelegate, databaseLocation: URL, diskAccessDelegate: DiskAccessDelegate?) {
+    init(router: RouterDelegate, databaseLocation: URL, diskAccessDelegate: DiskAccessDelegate?, enableBackgroundPolling: Bool = true, contactNameResolver: @escaping (String) -> String? = { ContactHelper.RetreiveContact(handle: $0)?.givenName }) {
         self.router = router
+        self.contactNameResolver = contactNameResolver
         
         if sqlite3_open_v2(databaseLocation.path, &db, SQLITE_OPEN_READONLY, nil) != SQLITE_OK {
             let errorMessage = db.flatMap { sqlite3_errmsg($0) }.map { String(cString: $0) } ?? "Unknown SQLite error"
@@ -79,8 +84,10 @@ class DatabaseHandler {
         UserDefaults.standard.set(true, forKey: JaredConstants.fullDiskAccess)
         
         querySinceID = getCurrentMaxRecordID()
-        start()
-        startWALWatcher(databaseLocation: databaseLocation)
+        if enableBackgroundPolling {
+            start()
+            startWALWatcher(databaseLocation: databaseLocation)
+        }
     }
     
     deinit {
@@ -204,9 +211,9 @@ class DatabaseHandler {
             chatGUID = unwrapStringColumn(for: statement, at: 2)
             
             let handle = String(cString: idcString)
-            let contact = ContactHelper.RetreiveContact(handle: handle)
+            let givenName = contactNameResolver(handle)
             
-            People.append(Person(givenName: contact?.givenName, handle: handle, isMe: false))
+            People.append(Person(givenName: givenName, handle: handle, isMe: false))
         }
         
         return Group(name: groupName, handle: chatGUID ?? chatHandle, participants: People)
@@ -272,7 +279,8 @@ class DatabaseHandler {
         return attachments
     }
     
-    private func queryNewRecords() -> Double {
+    @discardableResult
+    internal func queryNewRecords() -> Double {
         let start = Date()
         defer { statement = nil }
         
@@ -320,8 +328,8 @@ class DatabaseHandler {
             
             let cleanDestination = destination.hasPrefix("mailto:") ? String(destination.dropFirst(7)) : destination
             let cleanSenderHandle = senderHandle.hasPrefix("mailto:") ? String(senderHandle.dropFirst(7)) : senderHandle
-            let buddyName = ContactHelper.RetreiveContact(handle: cleanSenderHandle)?.givenName
-            let myName = ContactHelper.RetreiveContact(handle: cleanDestination)?.givenName
+            let buddyName = contactNameResolver(cleanSenderHandle)
+            let myName = contactNameResolver(cleanDestination)
             let sender: Person
             let recipient: RecipientEntity
             let group = retrieveGroupInfo(chatID: roomName)

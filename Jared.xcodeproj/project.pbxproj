@@ -104,6 +104,9 @@
 		B3B844CC24DA671E00DC162A /* DiskAccessDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3B844CA24DA5D1700DC162A /* DiskAccessDelegate.swift */; };
 		B3B844CE24DA6AB200DC162A /* config.json in Resources */ = {isa = PBXBuildFile; fileRef = B3B844CD24DA6AB200DC162A /* config.json */; };
 		B3B844D024DA6AC800DC162A /* JaredWebServerTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3B844CF24DA6AC800DC162A /* JaredWebServerTest.swift */; };
+		TM0000010000000000000001 /* TunnelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = TM0000010000000000000003 /* TunnelManager.swift */; };
+		TM0000010000000000000002 /* TunnelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = TM0000010000000000000003 /* TunnelManager.swift */; };
+		TM0000010000000000000004 /* TunnelManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = TM0000010000000000000005 /* TunnelManagerTests.swift */; };
 		B3B844D224DA6BBB00DC162A /* JaredWebServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3C59283224DD17900116ECB /* JaredWebServer.swift */; };
 		B3BBA7D11CB3284A00E1749C /* CoreModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B39EC17D1CB01FEF002C3161 /* CoreModule.swift */; };
 		B3BF17C2244EBE9A00CC44C5 /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BF17C1244EBE9A00CC44C5 /* Router.swift */; };
@@ -253,6 +256,8 @@
 		B3B844CA24DA5D1700DC162A /* DiskAccessDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskAccessDelegate.swift; sourceTree = "<group>"; };
 		B3B844CD24DA6AB200DC162A /* config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; name = config.json; path = Jared/config.json; sourceTree = SOURCE_ROOT; };
 		B3B844CF24DA6AC800DC162A /* JaredWebServerTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JaredWebServerTest.swift; sourceTree = "<group>"; };
+		TM0000010000000000000003 /* TunnelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelManager.swift; sourceTree = "<group>"; };
+		TM0000010000000000000005 /* TunnelManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelManagerTests.swift; sourceTree = "<group>"; };
 		B3B844D324DA6F5700DC162A /* Telegraph.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Telegraph.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		B3BBA7CC1CB3259A00E1749C /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		B3BBA7CF1CB327C200E1749C /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Main.strings; sourceTree = "<group>"; };
@@ -383,6 +388,7 @@
 				B3B844B924D77A4800DC162A /* SendStyleTest.swift */,
 				B32DE51424D51F9C00AB3A71 /* RouterTests.swift */,
 				B3B844CF24DA6AC800DC162A /* JaredWebServerTest.swift */,
+				TM0000010000000000000005 /* TunnelManagerTests.swift */,
 				B3B844BF24D8F91900DC162A /* DatabaseHandlerTest.swift */,
 				EC000001000000000000AA59 /* MessageSourceTests.swift */,
 				B319235624DD311B001904BA /* InternalModuleTest.swift */,
@@ -468,6 +474,7 @@
 				EC000001000000000000AA10 /* ConfigurationWatcher.swift */,
 				EC000001000000000000AA23 /* MessageMatcher.swift */,
 				B3C59283224DD17900116ECB /* JaredWebServer.swift */,
+				TM0000010000000000000003 /* TunnelManager.swift */,
 				B35CE7142196AD4E002F52A7 /* DatabaseHandler.swift */,
 				B38BB6B024EBB530000700F7 /* Helpers */,
 				B38BB6AE24EBB4CE000700F7 /* Structures */,
@@ -803,6 +810,7 @@
 				B3B7E52924EA579600A3FBD1 /* Webhook.swift in Sources */,
 				05ED22B0F8F944D6B8977436 /* KeychainAccessor.swift in Sources */,
 				B3C59284224DD17900116ECB /* JaredWebServer.swift in Sources */,
+				TM0000010000000000000001 /* TunnelManager.swift in Sources */,
 				B3FB28F424E9BCBD003BA6CB /* JaredConstants.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -855,6 +863,8 @@
 				B3EF1DB02206E4EB00953DE7 /* MessageTests.swift in Sources */,
 				B32DE51C24D552D300AB3A71 /* MockPluginManager.swift in Sources */,
 				B3B844D024DA6AC800DC162A /* JaredWebServerTest.swift in Sources */,
+				TM0000010000000000000004 /* TunnelManagerTests.swift in Sources */,
+				TM0000010000000000000002 /* TunnelManager.swift in Sources */,
 				B32DE51524D51F9C00AB3A71 /* RouterTests.swift in Sources */,
 				B3EF1DA4220687DD00953DE7 /* URLProtocolMock.swift in Sources */,
 				B3EF1DA02206849000953DE7 /* WebHookManager.swift in Sources */,
