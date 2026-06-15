@@ -124,6 +124,24 @@ return $input.all();
 Webhook …: auth configured but no Keychain secret found — delivering unsigned
 ```
 
+### Rotating or removing an HMAC secret
+
+**From the Webhook Management window (recommended):**
+
+Open the Jared status icon → Manage Webhooks, select the webhook, and click **Rotate HMAC Secret**. Enter a new secret to replace the existing one, or leave the field blank to remove it entirely.
+
+**From the terminal (manual):**
+
+```bash
+# Rotate — remove old, then reload Jared with the new secret in config.json
+security delete-generic-password -s "com.jared.webhook" -a "https://your.webhook.url"
+
+# Remove only (no replacement)
+security delete-generic-password -s "com.jared.webhook" -a "https://your.webhook.url"
+```
+
+After deleting via the terminal, reload Jared (or re-add `"auth": { "secret": "new-value" }` to config.json and reload) so the new secret is saved to Keychain. The UI button handles this without a config.json edit.
+
 ---
 
 ## Migrating from the old webhook format
