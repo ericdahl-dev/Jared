@@ -25,14 +25,18 @@ class ActionTest: XCTestCase {
         
         XCTAssertEqual(action.event, .removed, "Event marked as removed")
         XCTAssertEqual(action.type, .like, "Type is correct")
-        XCTAssertEqual(String(data: try! encoder.encode(action), encoding: .utf8),
-                       ActionTest.removeLikeJSON, "Encoding works as expected")
+        let removeLikeData = try! encoder.encode(action)
+        let removeLikeObject = try! JSONSerialization.jsonObject(with: removeLikeData) as! [String: Any]
+        let removeLikeExpected = try! JSONSerialization.jsonObject(with: Data(ActionTest.removeLikeJSON.utf8)) as! [String: Any]
+        XCTAssertEqual(removeLikeObject as NSDictionary, removeLikeExpected as NSDictionary, "Encoding works as expected")
         
         action = Action(actionTypeInt: 2000, targetGUID: targetGUID)
         
         XCTAssertEqual(action.event, .placed, "Event marked as removed")
         XCTAssertEqual(action.type, .love, "Type is correct")
-        XCTAssertEqual(String(data: try! encoder.encode(action), encoding: .utf8),
-                       ActionTest.placeLoveJSON, "Encoding works as expected")
+        let placeLoveData = try! encoder.encode(action)
+        let placeLoveObject = try! JSONSerialization.jsonObject(with: placeLoveData) as! [String: Any]
+        let placeLoveExpected = try! JSONSerialization.jsonObject(with: Data(ActionTest.placeLoveJSON.utf8)) as! [String: Any]
+        XCTAssertEqual(placeLoveObject as NSDictionary, placeLoveExpected as NSDictionary, "Encoding works as expected")
     }
 }

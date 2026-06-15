@@ -39,6 +39,25 @@ struct ConfigurationFile: Decodable {
 
 struct WebserverConfiguration: Decodable {
     let port: Int
+    let bearerToken: String?
+    let tunnel: TunnelConfiguration?
+
+    init(port: Int, bearerToken: String? = nil, tunnel: TunnelConfiguration? = nil) {
+        self.port = port
+        self.bearerToken = bearerToken
+        self.tunnel = tunnel
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        port = try container.decode(Int.self, forKey: .port)
+        bearerToken = try container.decodeIfPresent(String.self, forKey: .bearerToken)
+        tunnel = try container.decodeIfPresent(TunnelConfiguration.self, forKey: .tunnel)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case port, bearerToken, tunnel
+    }
 }
 
 struct RouteConfiguration: Decodable {
