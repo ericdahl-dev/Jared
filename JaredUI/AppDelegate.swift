@@ -14,6 +14,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var sender: Jared
     var pluginManager: PluginManager
     var server: JaredWebServer
+    var tunnelManager: TunnelManager
     var databaseHelper: DatabaseHandler!
     var menuBarManager: MenuBarManager!
     override init() {
@@ -28,7 +29,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         sender = Jared()
         pluginManager = PluginManager(sender: sender, configuration: config, pluginDir: ConfigurationHelper.getPluginDirectory())
-        server = JaredWebServer(sender: sender, configuration: config.webServer)
+        let webServer = JaredWebServer(sender: sender, configuration: config.webServer)
+        server = webServer
+        let configuredPort = config.webServer.port
+        tunnelManager = TunnelManager(
+            configuration: config.webServer.tunnel ?? TunnelConfiguration(),
+            localPortProvider: {
+                webServer.isRunning ? webServer.listeningPort : configuredPort
+            }
+        )
         super.init()
     }
 
@@ -42,13 +51,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let viewController = NSApplication.shared.keyWindow?.contentViewController as? ViewController
 		databaseHelper = DatabaseHandler(router: pluginManager.router, databaseLocation: messageDatabaseURL, diskAccessDelegate: viewController)
 		menuBarManager = MenuBarManager(pluginManager: pluginManager)
+        tunnelManager.startObserving()
 
 		let configURL = ConfigurationHelper.getSupportDirectory().appendingPathComponent("config.json")
 		pluginManager.startWatchingConfig(at: configURL)
     }
     
     func applicationWillTerminate(_ aNotification: Notification) {
-        // Insert code here to tear down your application
+        tunnelManager.stop()
     }
     
     private func setStateForUITesting() {
