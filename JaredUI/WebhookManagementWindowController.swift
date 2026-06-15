@@ -112,10 +112,11 @@ class WebhookManagementWindowController: NSWindowController,
     private var enabledCheck:   NSButton!
     private var routesLabel:    NSTextField!
     private var deliveryStatus: NSTextField!
-    private var saveBtn:        NSButton!
-    private var deleteBtn:      NSButton!
-    private var openBtn:        NSButton!
-    private var testBtn:        NSButton!
+    private var saveBtn:           NSButton!
+    private var deleteBtn:         NSButton!
+    private var openBtn:           NSButton!
+    private var testBtn:           NSButton!
+    private var rotateSecretBtn:   NSButton!
     private var historyTable:   NSTableView!
     private var historyStatus:  NSTextField!
     private var emptyDetail:    NSTextField!
@@ -329,23 +330,28 @@ class WebhookManagementWindowController: NSWindowController,
         deliveryStatus.textColor = .secondaryLabelColor
         deliveryStatus.font = .systemFont(ofSize: 12)
 
-        saveBtn   = actionButton("Save Changes",      isPrimary: true)
-        deleteBtn = actionButton("Delete",            isPrimary: false)
-        openBtn   = actionButton("Open Endpoint",     isPrimary: false)
-        testBtn   = actionButton("Send Test Payload", isPrimary: false)
-        saveBtn.action   = #selector(saveChanges)
-        deleteBtn.action = #selector(deleteSelected)
-        openBtn.action   = #selector(openEndpoint)
-        testBtn.action   = #selector(sendTest)
-        for b in [saveBtn!, deleteBtn!, openBtn!, testBtn!] { b.target = self }
+        saveBtn          = actionButton("Save Changes",       isPrimary: true)
+        deleteBtn        = actionButton("Delete",             isPrimary: false)
+        openBtn          = actionButton("Open Endpoint",      isPrimary: false)
+        testBtn          = actionButton("Send Test Payload",  isPrimary: false)
+        rotateSecretBtn  = actionButton("Rotate HMAC Secret", isPrimary: false)
+        saveBtn.action          = #selector(saveChanges)
+        deleteBtn.action        = #selector(deleteSelected)
+        openBtn.action          = #selector(openEndpoint)
+        testBtn.action          = #selector(sendTest)
+        rotateSecretBtn.action  = #selector(rotateHMACSecret)
+        for b in [saveBtn!, deleteBtn!, openBtn!, testBtn!, rotateSecretBtn!] { b.target = self }
 
         let topBtnRow    = NSStackView(views: [saveBtn, deleteBtn])
         topBtnRow.orientation = .horizontal
         topBtnRow.spacing = 8
-        let bottomBtnRow = NSStackView(views: [openBtn, testBtn])
-        bottomBtnRow.orientation = .horizontal
-        bottomBtnRow.spacing = 8
-        let buttonRow = NSStackView(views: [topBtnRow, bottomBtnRow])
+        let midBtnRow    = NSStackView(views: [openBtn, testBtn])
+        midBtnRow.orientation = .horizontal
+        midBtnRow.spacing = 8
+        let botBtnRow    = NSStackView(views: [rotateSecretBtn])
+        botBtnRow.orientation = .horizontal
+        botBtnRow.spacing = 8
+        let buttonRow = NSStackView(views: [topBtnRow, midBtnRow, botBtnRow])
         buttonRow.orientation = .vertical
         buttonRow.alignment = .leading
         buttonRow.spacing = 6
@@ -645,6 +651,38 @@ class WebhookManagementWindowController: NSWindowController,
                 }
             }
         }.resume()
+    }
+
+    @objc private func rotateHMACSecret() {
+        guard selectedRow >= 0, selectedRow < webhooks.count,
+              let urlStr = webhooks[selectedRow]["url"] as? String,
+              let window else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Rotate HMAC Secret"
+        alert.informativeText = "Enter a new shared secret for this webhook, or leave blank to remove the existing secret from Keychain."
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+
+        let field = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 22))
+        field.placeholderString = "New secret (blank to delete)"
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertFirstButtonReturn, let self else { return }
+            let keychain = KeychainStore()
+            let newSecret = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if newSecret.isEmpty {
+                keychain.delete(for: urlStr)
+                self.deliveryStatus.stringValue = "HMAC secret removed from Keychain"
+                self.deliveryStatus.textColor   = .secondaryLabelColor
+            } else {
+                keychain.save(secret: newSecret, for: urlStr)
+                self.deliveryStatus.stringValue = "HMAC secret updated in Keychain ✓"
+                self.deliveryStatus.textColor   = .systemGreen
+            }
+        }
     }
 
     @objc private func addWebhook() {
