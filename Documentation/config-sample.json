@@ -31,7 +31,12 @@
 		}
 	],
 	"webServer": {
-		"port": 3001
+		"port": 3001,
+		"bearerToken": "optional-shared-secret",
+		"tunnel": {
+			"enabled": false,
+			"provider": "cloudflared"
+		}
 	},
 	"llm": {
 		"provider": "openai",
