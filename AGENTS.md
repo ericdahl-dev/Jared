@@ -13,6 +13,17 @@
 xcodebuild -project Jared.xcodeproj -scheme JaredTests test ONLY_ACTIVE_ARCH=NO CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 ```
 
+Or run the CI script (builds `JaredFramework` first):
+```
+bash ./.github/scripts/test-macos.sh
+```
+
+**GitHub Actions** (`.github/workflows/test.yml`): macOS unit tests run on a **self-hosted** runner only when the repository variable `MACOS_CI_ENABLED` is `true` (Settings → Secrets and variables → Actions → Variables). The runner must have labels `self-hosted` and `macOS`. When the variable is unset or not `true`, the job is skipped — flip it on when your Mac runner is online.
+
+**Release** (`.github/workflows/release.yml`): triggers on `v*` tags or **workflow_dispatch**. Builds on the same self-hosted Mac when `MACOS_CI_ENABLED` is `true` (always runs on manual dispatch). Script: `bash ./.github/scripts/release-macos.sh` (archive → export → optional notarize → zip). Uploads a draft GitHub release with `Jared-<version>.zip`.
+
+Optional repository **secrets** for signing/notarization: `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`, `MACOS_CODESIGN_IDENTITY`. Notarization uses keychain profile `notarytool` (or creates it from those secrets). Without Apple secrets, export still runs if Developer ID is in the runner keychain; notarization is skipped.
+
 **"No such module 'JaredFramework'" errors**: This is normal when Xcode hasn't built the framework target yet. Build the `JaredFramework` scheme first, then build `Jared`/`JaredTests`. These LSP errors are stale and not real compile failures.
 
 ## Architecture Overview

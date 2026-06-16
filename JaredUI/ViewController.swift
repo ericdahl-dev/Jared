@@ -36,6 +36,7 @@ class ViewController: NSViewController, DiskAccessDelegate {
     private var webhookRow: StatusRowView!
     private var contactsRow: StatusRowView!
     private var sendRow: StatusRowView!
+    private var sleepRow: StatusRowView!
 
     private var tunnelRow: StatusRowView!
     private var tunnelManagementWindowController: TunnelManagementWindowController?
@@ -51,6 +52,7 @@ class ViewController: NSViewController, DiskAccessDelegate {
         JaredConstants.sendMessageAccess,
         JaredConstants.fullDiskAccess,
         JaredConstants.webhookCount,
+        JaredConstants.preventSystemSleep,
     ]
 
     // MARK: - Lifecycle
@@ -168,6 +170,7 @@ class ViewController: NSViewController, DiskAccessDelegate {
         webhookRow  = StatusRowView(icon: "bolt.horizontal.fill",            iconColor: .systemPink,   title: "Webhooks")
         contactsRow = StatusRowView(icon: "person.fill",                     iconColor: .systemOrange, title: "Contacts")
         sendRow     = StatusRowView(icon: "envelope.fill",                   iconColor: .systemPurple, title: "Messages automation")
+        sleepRow    = StatusRowView(icon: "moon.zzz.fill",                   iconColor: .systemYellow, title: "Keep Mac awake")
 
         apiRow.actionButton.target      = self
         apiRow.actionButton.action      = #selector(EnableDisableRestApiAction(_:))
@@ -183,9 +186,11 @@ class ViewController: NSViewController, DiskAccessDelegate {
         sendRow.actionButton.action     = #selector(sendStatusButtonAction(_:))
         diskRow.actionButton.target     = self
         diskRow.actionButton.action     = #selector(openDiskPrefs)
+        sleepRow.actionButton.target    = self
+        sleepRow.actionButton.action    = #selector(togglePreventSleepAction(_:))
 
         let rows: [NSView] = [
-            sectionHeader("Status"),   jaredRow, diskRow,
+            sectionHeader("Status"),   jaredRow, diskRow, sleepRow,
             separator(),
             sectionHeader("Services"), apiRow, tunnelRow, llmRow, webhookRow,
             separator(),
@@ -216,7 +221,7 @@ class ViewController: NSViewController, DiskAccessDelegate {
             content.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor),
         ])
 
-        for row in [jaredRow, diskRow, apiRow, tunnelRow, llmRow, webhookRow, contactsRow, sendRow] as [NSView] {
+        for row in [jaredRow, diskRow, sleepRow, apiRow, tunnelRow, llmRow, webhookRow, contactsRow, sendRow] as [NSView] {
             row.leadingAnchor.constraint(equalTo: stack.leadingAnchor).isActive = true
             row.trailingAnchor.constraint(equalTo: stack.trailingAnchor).isActive = true
         }
@@ -335,6 +340,22 @@ class ViewController: NSViewController, DiskAccessDelegate {
                 self.diskRow?.update(statusText: "Access denied", state: .error, buttonTitle: "Grant access")
             } else {
                 self.diskRow?.update(statusText: "Granted", state: .on, buttonTitle: nil)
+            }
+
+            // Sleep row
+            let keepAwake = self.defaults.bool(forKey: JaredConstants.preventSystemSleep)
+            if keepAwake {
+                self.sleepRow?.update(
+                    statusText: "System stays awake; display may sleep",
+                    state: .on,
+                    buttonTitle: "Disable"
+                )
+            } else {
+                self.sleepRow?.update(
+                    statusText: "Mac can sleep when idle",
+                    state: .off,
+                    buttonTitle: "Enable"
+                )
             }
 
             // API row
@@ -464,6 +485,10 @@ class ViewController: NSViewController, DiskAccessDelegate {
 
     @IBAction func EnableDisableRestApiAction(_ sender: Any) {
         defaults.set(!defaults.bool(forKey: JaredConstants.restApiIsDisabled), forKey: JaredConstants.restApiIsDisabled)
+    }
+
+    @IBAction func togglePreventSleepAction(_ sender: Any) {
+        defaults.set(!defaults.bool(forKey: JaredConstants.preventSystemSleep), forKey: JaredConstants.preventSystemSleep)
     }
 
     @objc private func tunnelStateDidChange(_ notification: Notification) {

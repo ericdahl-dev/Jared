@@ -1,0 +1,63 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    if: vars.MACOS_CI_ENABLED == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on:
+      - self-hosted
+      - macOS
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build release
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          MACOS_CODESIGN_IDENTITY: ${{ secrets.MACOS_CODESIGN_IDENTITY }}
+        run: bash ./.github/scripts/release-macos.sh
+
+      - name: Upload Jared.app zip
+        uses: actions/upload-artifact@v7
+        with:
+          name: jared-macos
+          path: Jared-*.zip
+          if-no-files-found: error
+
+  release:
+    name: Create release and upload artifacts
+    runs-on: ubuntu-latest
+    needs: [build-macos]
+    if: needs.build-macos.result == 'success'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: jared-macos
+
+      - name: Display structure of downloaded files
+        run: ls -la
+
+      - name: Release
+        uses: softprops/action-gh-release@v3
+        with:
+          draft: true
+          prerelease: false
+          fail_on_unmatched_files: false
+          files: Jared-*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

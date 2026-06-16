@@ -16,6 +16,7 @@ struct JaredConstants {
     static let sendMessageAccess = "SendMessageAccess"
     static let fullDiskAccess = "FullDiskAccess"
     static let webhookCount = "WebhookCount"
+    static let preventSystemSleep = "PreventSystemSleep"
     static let fullDiskAcccessUrl = "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
     static let contactsAccessUrl = "x-apple.systempreferences:com.apple.preference.security?Privacy_Contacts"
     static let automationAccessUrl = "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
