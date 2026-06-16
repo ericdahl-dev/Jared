@@ -120,6 +120,17 @@ class WebhookDeliveryTests: XCTestCase {
         XCTAssertNil(object["text"], "Test payload should use production Message shape, not legacy fields")
     }
 
+    func testTestWebhookBodyPreservesEncoderKeyOrder() {
+        guard let body = WebHookManager.createTestWebhookBody(),
+              let bodyString = String(data: body, encoding: .utf8) else {
+            XCTFail("Failed to build test webhook body"); return
+        }
+
+        XCTAssertTrue(bodyString.hasSuffix(",\"_jared_test\":true}"))
+        let withoutFlag = String(bodyString.dropLast(",\"_jared_test\":true}".count)) + "}"
+        XCTAssertNotNil(try? JSONSerialization.jsonObject(with: Data(withoutFlag.utf8)))
+    }
+
     func testMakeDeliveryRequestMatchesProductionHeaders() {
         keychain.save(secret: "test-secret", for: WEBHOOK_URL)
         let webhook = RichWebhook(url: WEBHOOK_URL, auth: WebhookAuth(secret: "test-secret"))
