@@ -87,6 +87,43 @@ struct WebhookResponse: Decodable {
     var error: String?
 }
 
+// MARK: - URL validation
+
+public enum WebhookURLError: Error, Equatable {
+    case empty
+    case invalid
+    case missingScheme
+    case unsupportedScheme(String)
+    case missingHost
+
+    public var message: String {
+        switch self {
+        case .empty: return "Enter a URL"
+        case .invalid: return "Not a valid URL"
+        case .missingScheme: return "URL must start with http:// or https://"
+        case .unsupportedScheme(let scheme): return "Scheme \(scheme):// is not supported"
+        case .missingHost: return "URL is missing a host"
+        }
+    }
+}
+
+public enum WebhookURLValidator {
+    public static func validate(_ input: String) -> Result<URL, WebhookURLError> {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .failure(.empty) }
+        guard let components = URLComponents(string: trimmed) else { return .failure(.invalid) }
+        guard let scheme = components.scheme?.lowercased(), !scheme.isEmpty else {
+            return .failure(.missingScheme)
+        }
+        guard ["http", "https"].contains(scheme) else {
+            return .failure(.unsupportedScheme(scheme))
+        }
+        guard let host = components.host, !host.isEmpty else { return .failure(.missingHost) }
+        guard let url = components.url else { return .failure(.invalid) }
+        return .success(url)
+    }
+}
+
 // MARK: - Delivery record
 
 public struct WebhookDeliveryRecord: Codable {

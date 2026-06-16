@@ -101,7 +101,8 @@ private class DeliveryCellView: NSTableCellView {
 
 class WebhookManagementWindowController: NSWindowController,
                                           NSTableViewDelegate,
-                                          NSTableViewDataSource {
+                                          NSTableViewDataSource,
+                                          NSTextFieldDelegate {
 
     // Left panel
     private var endpointTable:  NSTableView!
@@ -109,6 +110,7 @@ class WebhookManagementWindowController: NSWindowController,
     // Right panel
     private var detailBox:      NSView!
     private var urlField:       NSTextField!
+    private var urlValidationLabel: NSTextField!
     private var enabledCheck:   NSButton!
     private var routesLabel:    NSTextField!
     private var deliveryStatus: NSTextField!
@@ -317,6 +319,12 @@ class WebhookManagementWindowController: NSWindowController,
         urlField.usesSingleLineMode = false
         urlField.cell?.wraps = true
         urlField.cell?.isScrollable = false
+        urlField.delegate = self
+
+        urlValidationLabel = bodyLabel("")
+        urlValidationLabel.font = .systemFont(ofSize: 11)
+        urlValidationLabel.textColor = .systemRed
+        urlValidationLabel.isHidden = true
 
         enabledCheck = NSButton(checkboxWithTitle: "Enabled", target: nil, action: nil)
 
@@ -390,7 +398,7 @@ class WebhookManagementWindowController: NSWindowController,
         historyStatus.alignment = .center
         historyStatus.font = .systemFont(ofSize: 12)
 
-        for v in [selectedTitle, urlLabel, urlField!, enableRow, deliveryStatus,
+        for v in [selectedTitle, urlLabel, urlField!, urlValidationLabel!, enableRow, deliveryStatus,
                   buttonRow, sep, historyTitle, historySub,
                   histScrollView, historyStatus] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false
@@ -410,7 +418,11 @@ class WebhookManagementWindowController: NSWindowController,
             urlField.trailingAnchor.constraint(equalTo: selectedTitle.trailingAnchor),
             urlField.heightAnchor.constraint(greaterThanOrEqualToConstant: 42),
 
-            enableRow.topAnchor.constraint(equalTo: urlField.bottomAnchor, constant: 10),
+            urlValidationLabel.topAnchor.constraint(equalTo: urlField.bottomAnchor, constant: 4),
+            urlValidationLabel.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
+            urlValidationLabel.trailingAnchor.constraint(equalTo: selectedTitle.trailingAnchor),
+
+            enableRow.topAnchor.constraint(equalTo: urlValidationLabel.bottomAnchor, constant: 6),
             enableRow.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
 
             deliveryStatus.topAnchor.constraint(equalTo: enableRow.bottomAnchor, constant: 6),
@@ -509,6 +521,7 @@ class WebhookManagementWindowController: NSWindowController,
         let url = hook["url"] as? String ?? ""
         let forThisHook = deliveryLog.filter { $0.webhookURL == url }
         historyStatus.isHidden = !forThisHook.isEmpty
+        revalidateURLField(allowEmpty: false)
     }
 
     private func refreshDeliveryStatus() {
@@ -582,13 +595,54 @@ class WebhookManagementWindowController: NSWindowController,
 
     @objc private func saveChanges() {
         guard selectedRow >= 0, selectedRow < webhooks.count else { return }
-        let url = urlField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !url.isEmpty else { return }
-        webhooks[selectedRow]["url"]     = url
-        webhooks[selectedRow]["enabled"] = enabledCheck.state == .on
-        reloadList()
-        endpointTable.selectRowIndexes(IndexSet(integer: selectedRow), byExtendingSelection: false)
-        save()
+        switch WebhookURLValidator.validate(urlField.stringValue) {
+        case .failure(let err):
+            showURLValidation(err)
+            urlField.window?.makeFirstResponder(urlField)
+            NSSound.beep()
+            return
+        case .success(let url):
+            hideURLValidation()
+            webhooks[selectedRow]["url"]     = url.absoluteString
+            webhooks[selectedRow]["enabled"] = enabledCheck.state == .on
+            reloadList()
+            endpointTable.selectRowIndexes(IndexSet(integer: selectedRow), byExtendingSelection: false)
+            save()
+        }
+    }
+
+    // MARK: - URL validation feedback
+
+    func controlTextDidChange(_ obj: Notification) {
+        guard let field = obj.object as? NSTextField, field === urlField else { return }
+        revalidateURLField(allowEmpty: true)
+    }
+
+    private func revalidateURLField(allowEmpty: Bool) {
+        let trimmed = urlField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty && allowEmpty {
+            hideURLValidation()
+            saveBtn?.isEnabled = false
+            return
+        }
+        switch WebhookURLValidator.validate(urlField.stringValue) {
+        case .failure(let err):
+            showURLValidation(err)
+            saveBtn?.isEnabled = false
+        case .success:
+            hideURLValidation()
+            saveBtn?.isEnabled = true
+        }
+    }
+
+    private func showURLValidation(_ error: WebhookURLError) {
+        urlValidationLabel?.stringValue = error.message
+        urlValidationLabel?.isHidden = false
+    }
+
+    private func hideURLValidation() {
+        urlValidationLabel?.isHidden = true
+        urlValidationLabel?.stringValue = ""
     }
 
     @objc private func deleteSelected() {
@@ -710,17 +764,28 @@ class WebhookManagementWindowController: NSWindowController,
 
         guard let window else { return }
         alert.beginSheetModal(for: window) { [weak self] response in
-            guard response == .alertFirstButtonReturn else { return }
-            let url = urlField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !url.isEmpty, let self else { return }
-            let mode = modeBtn.selectedItem?.title ?? "notify"
-            self.webhooks.append(["url": url, "mode": mode, "enabled": true])
-            self.reloadList()
-            self.save()
-            let last = self.webhooks.count - 1
-            self.endpointTable.selectRowIndexes(IndexSet(integer: last), byExtendingSelection: false)
-            self.endpointTable.scrollRowToVisible(last)
-            self.selectedRow = last
+            guard response == .alertFirstButtonReturn, let self else { return }
+            switch WebhookURLValidator.validate(urlField.stringValue) {
+            case .failure(let err):
+                let invalid = NSAlert()
+                invalid.messageText  = "Invalid webhook URL"
+                invalid.informativeText = err.message
+                invalid.alertStyle = .warning
+                invalid.addButton(withTitle: "OK")
+                invalid.beginSheetModal(for: window) { _ in
+                    // Re-open the add dialog so the user can correct the input
+                    self.addWebhook()
+                }
+            case .success(let url):
+                let mode = modeBtn.selectedItem?.title ?? "notify"
+                self.webhooks.append(["url": url.absoluteString, "mode": mode, "enabled": true])
+                self.reloadList()
+                self.save()
+                let last = self.webhooks.count - 1
+                self.endpointTable.selectRowIndexes(IndexSet(integer: last), byExtendingSelection: false)
+                self.endpointTable.scrollRowToVisible(last)
+                self.selectedRow = last
+            }
         }
     }
 
