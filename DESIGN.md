@@ -55,7 +55,6 @@ These are decorative — never use them to communicate status.
 | Jared | `bubble.left.fill` | `systemGreen` |
 | Full disk access | `internaldrive.fill` | `systemBlue` |
 | REST API | `network` | `systemIndigo` |
-| LLM | `brain` | `systemTeal` |
 | Webhooks | `bolt.horizontal.fill` | `systemPink` |
 | Contacts | `person.fill` | `systemOrange` |
 | Messages automation | `envelope.fill` | `systemPurple` |
@@ -80,13 +79,12 @@ All text uses the system font via `NSFont.systemFont(ofSize:weight:)`.
 | --- | --- | --- | --- |
 | App title | 18 | `.semibold` | "Jared" in header. `ViewController.swift:111` |
 | Section header | 10 | `.semibold`, uppercased, `tertiaryLabelColor` | "STATUS", "SERVICES". `ViewController.swift:256` |
-| Row title | 13 | `.medium` | "REST API", "LLM". `ViewController.swift:563` |
+| Row title | 13 | `.medium` | "REST API", "Webhooks". `ViewController.swift:563` |
 | Row status / header subtitle / tool button | 12 | `.regular` (or `.medium` for the header CTA) | "Running", "Authorized". `ViewController.swift:114`, `:119`, `:280`, `:568` |
 | Row action button | 11 | `.regular` | "Enable", "Manage". `ViewController.swift:574` |
 
-Sheet/secondary screens (e.g. `LLMSettingsViewController`) reuse the 12pt
-regular and 11pt button conventions. A new screen should pick from this scale —
-don't introduce a new size.
+Sheet/secondary screens reuse the 12pt regular and 11pt button conventions.
+A new screen should pick from this scale — don't introduce a new size.
 
 ## Spacing & layout
 
