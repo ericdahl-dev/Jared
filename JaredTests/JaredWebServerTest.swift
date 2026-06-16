@@ -91,6 +91,27 @@ class JaredWebServerTest: XCTestCase {
         XCTAssertEqual((jaredMock.calls[0].recipient as! AbstractRecipient).handle, "jared-webserver-test@example.invalid", "recipient email is correct")
     }
 
+    func testValidRequestReturnsStatusOkBody() {
+        XCTAssertTrue(webServer.start())
+        let requestURL = URL(string: "http://localhost:\(webServer.listeningPort)/message")!
+
+        var request = URLRequest(url: requestURL)
+        request.httpMethod = "POST"
+        request.httpBody = JaredWebServerTest.validBody.data(using: .utf8)
+        request.addValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+
+        var responseData: Data?
+        let promise = XCTestExpectation(description: "response received")
+        URLSession.shared.dataTask(with: request) { data, _, _ in
+            responseData = data
+            promise.fulfill()
+        }.resume()
+
+        wait(for: [promise], timeout: 5)
+        let body = responseData.flatMap { String(data: $0, encoding: .utf8) }
+        XCTAssertEqual(body, "{\"status\": \"ok\"}")
+    }
+
     func testBearerTokenRejectsMissingAuthorization() {
         webServer = JaredWebServer(sender: jaredMock, configuration: WebserverConfiguration(port: 0, bearerToken: "secret"))
         XCTAssertTrue(webServer.start())

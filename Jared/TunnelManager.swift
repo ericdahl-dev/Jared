@@ -78,16 +78,23 @@ final class ProcessTunnelRunner: TunnelRunner {
 
     var isRunning: Bool { process?.isRunning ?? false }
 
+    private static let augmentedPATH: String = {
+        let extra = ["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"]
+        let existing = ProcessInfo.processInfo.environment["PATH"] ?? ""
+        return (extra + [existing]).joined(separator: ":")
+    }()
+
     func start(command: TunnelLaunchCommand, onOutput: @escaping (String) -> Void, onComplete: @escaping (Error?) -> Void) {
         stop()
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         proc.arguments = command.arguments
+        var env = ProcessInfo.processInfo.environment
+        env["PATH"] = Self.augmentedPATH
         if let environment = command.environment {
-            var env = ProcessInfo.processInfo.environment
             environment.forEach { env[$0.key] = $0.value }
-            proc.environment = env
         }
+        proc.environment = env
 
         let pipe = Pipe()
         proc.standardOutput = pipe
@@ -129,11 +136,13 @@ final class ProcessTunnelRunner: TunnelRunner {
 
 final class TunnelManager: NSObject {
     static let publicURLDidChangeNotification = Notification.Name("TunnelManagerPublicURLDidChange")
+    static let configurationDidChangeNotification = Notification.Name("TunnelManagerConfigurationDidChange")
     static let publicURLUserInfoKey = "publicURL"
     static let lastErrorUserInfoKey = "lastError"
+    static let configurationUserInfoKey = "configuration"
     static let ngrokKeychainAccount = "ngrok-authtoken"
 
-    private let configuration: TunnelConfiguration
+    private(set) var configuration: TunnelConfiguration
     private let runner: TunnelRunner
     private let keychain: KeychainAccessor
     private let localPortProvider: () -> Int
@@ -209,6 +218,12 @@ final class TunnelManager: NSObject {
             postChange()
         }
         lastError = nil
+    }
+
+    func reconfigure(_ newConfig: TunnelConfiguration) {
+        stop()
+        configuration = newConfig
+        syncFromDefaults()
     }
 
     private func handleOutputLine(_ line: String) {
