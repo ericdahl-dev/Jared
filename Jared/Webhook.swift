@@ -139,6 +139,29 @@ public extension Notification.Name {
     static let webhookDelivered = Notification.Name("com.jared.webhookDelivered")
 }
 
+// MARK: - Delivery filter
+
+public enum WebhookDeliveryFilter {
+    public enum Mode {
+        case all
+        case failuresOnly
+    }
+
+    public static func apply(_ records: [WebhookDeliveryRecord], mode: Mode) -> [WebhookDeliveryRecord] {
+        switch mode {
+        case .all:
+            return records
+        case .failuresOnly:
+            return records.filter { isFailure($0) }
+        }
+    }
+
+    private static func isFailure(_ record: WebhookDeliveryRecord) -> Bool {
+        guard let code = record.statusCode else { return true } // network/timeout
+        return !(200...299).contains(code)
+    }
+}
+
 // MARK: - Delivery store (persistent, on disk)
 
 /// Persists `WebhookDeliveryRecord`s to a JSON file so the management UI can show

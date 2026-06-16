@@ -289,6 +289,63 @@ class WebhookDeliveryTests: XCTestCase {
         XCTAssertEqual(wm.deliveryLog.first?.deliveryId, "preloaded")
     }
 
+    // MARK: - Delivery filter
+
+    func testFilterAllReturnsEverything() {
+        let records = [
+            sampleRecord(deliveryId: "a", statusCode: 200),
+            sampleRecord(deliveryId: "b", statusCode: 500),
+            sampleRecord(deliveryId: "c", statusCode: nil, error: "timeout"),
+        ]
+        XCTAssertEqual(WebhookDeliveryFilter.apply(records, mode: .all).map(\.deliveryId),
+                       ["a", "b", "c"])
+    }
+
+    func testFilterFailuresOnlyDropsSuccess() {
+        let records = [
+            sampleRecord(deliveryId: "ok", statusCode: 200),
+            sampleRecord(deliveryId: "fail", statusCode: 500),
+        ]
+        let filtered = WebhookDeliveryFilter.apply(records, mode: .failuresOnly)
+        XCTAssertEqual(filtered.map(\.deliveryId), ["fail"])
+    }
+
+    func testFilterFailuresOnlyKeepsNetworkErrors() {
+        let records = [
+            sampleRecord(deliveryId: "neterr", statusCode: nil, error: "timeout"),
+        ]
+        let filtered = WebhookDeliveryFilter.apply(records, mode: .failuresOnly)
+        XCTAssertEqual(filtered.map(\.deliveryId), ["neterr"],
+                       "Network errors (statusCode == nil) must count as failures")
+    }
+
+    func testFilterFailuresOnlyKeeps4xxAnd5xx() {
+        let records = [
+            sampleRecord(deliveryId: "200", statusCode: 200),
+            sampleRecord(deliveryId: "299", statusCode: 299),
+            sampleRecord(deliveryId: "400", statusCode: 400),
+            sampleRecord(deliveryId: "404", statusCode: 404),
+            sampleRecord(deliveryId: "500", statusCode: 500),
+            sampleRecord(deliveryId: "503", statusCode: 503),
+        ]
+        let filtered = WebhookDeliveryFilter.apply(records, mode: .failuresOnly)
+        XCTAssertEqual(filtered.map(\.deliveryId), ["400", "404", "500", "503"])
+    }
+
+    func testFilterPreservesOrder() {
+        let records = [
+            sampleRecord(deliveryId: "first-fail", statusCode: 500,
+                         date: Date(timeIntervalSince1970: 3)),
+            sampleRecord(deliveryId: "ok",         statusCode: 200,
+                         date: Date(timeIntervalSince1970: 2)),
+            sampleRecord(deliveryId: "second-fail", statusCode: 500,
+                         date: Date(timeIntervalSince1970: 1)),
+        ]
+        let filtered = WebhookDeliveryFilter.apply(records, mode: .failuresOnly)
+        XCTAssertEqual(filtered.map(\.deliveryId), ["first-fail", "second-fail"],
+                       "Filter must preserve input order (newest-first contract)")
+    }
+
     func testWebHookManagerPersistsDelivery() {
         let fileURL = tempDeliveryFileURL()
         let url = URL(string: WEBHOOK_URL)
