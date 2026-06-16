@@ -13,9 +13,13 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: JaredTests
+    if: vars.MACOS_CI_ENABLED == 'true'
     runs-on:
       - self-hosted
       - macOS
@@ -30,11 +34,4 @@ jobs:
           xcodebuild -version
 
       - name: Run unit tests
-        run: |
-          xcodebuild \
-            -project Jared.xcodeproj \
-            -scheme JaredTests \
-            test \
-            ONLY_ACTIVE_ARCH=NO \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO
+        run: bash ./.github/scripts/test-macos.sh

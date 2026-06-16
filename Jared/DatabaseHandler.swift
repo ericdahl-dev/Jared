@@ -37,7 +37,7 @@ class DatabaseHandler {
 			message.expressive_send_style_id,
 			message.associated_message_type,
 			message.associated_message_guid, message.guid, destination_caller_id,
-			message.attributedBody
+			message.handle_id, message.attributedBody
 			FROM message LEFT JOIN handle
 			ON message.handle_id = handle.ROWID
 			WHERE message.ROWID > ? ORDER BY message.ROWID ASC
@@ -55,6 +55,8 @@ class DatabaseHandler {
     private var walSource: DispatchSourceFileSystemObject?
     private var walContinuation: AsyncStream<Void>.Continuation?
     private var backgroundTask: Task<Void, Never>?
+    /// Inbound rows deferred once while Messages backfills `handle_id` / handle join.
+    private var deferredIncomingRowIDs = Set<String>()
 
     /// Triggers an immediate poll, bypassing the refresh interval. Used in tests.
     func triggerImmediateQuery() {
@@ -205,8 +207,10 @@ class DatabaseHandler {
         var People = [Person]()
         var groupName: String?
         var chatGUID: String?
+        var foundRow = false
         
         while sqlite3_step(statement) == SQLITE_ROW {
+            foundRow = true
             guard let idcString = sqlite3_column_text(statement, 0) else {
                 break
             }
@@ -217,6 +221,10 @@ class DatabaseHandler {
             let givenName = contactNameResolver(handle)
             
             People.append(Person(givenName: givenName, handle: handle, isMe: false))
+        }
+        
+        guard foundRow else {
+            return nil
         }
         
         return Group(name: groupName, handle: chatGUID ?? chatHandle, participants: People)
@@ -298,7 +306,7 @@ class DatabaseHandler {
         while sqlite3_step(statement) == SQLITE_ROW {
             var senderHandleOptional = unwrapStringColumn(for: statement, at: 0)
             let rawText = unwrapStringColumn(for: statement, at: 1)
-            let textOptional = (rawText?.isEmpty == false ? rawText : nil) ?? extractAttributedBodyText(for: statement, at: 13)
+            let textOptional = (rawText?.isEmpty == false ? rawText : nil) ?? extractAttributedBodyText(for: statement, at: 14)
             let rowID = unwrapStringColumn(for: statement, at: 2)
             let roomName = unwrapStringColumn(for: statement, at: 3)
             let isFromMe = sqlite3_column_int(statement, 4) == 1
@@ -310,17 +318,25 @@ class DatabaseHandler {
             let associatedMessageGUID = unwrapStringColumn(for: statement, at: 10)
             let guid = unwrapStringColumn(for: statement, at: 11)
             let destinationCallerId = unwrapStringColumn(for: statement, at: 12)
-            
-            querySinceID = rowID;
+            let messageHandleId = sqlite3_column_int(statement, 13)
 
-            guard !isFromMe else { continue }
-            
-            if senderHandleOptional == nil {
-                let raw = destinationCallerId ?? destinationOptional
-                senderHandleOptional = raw?.hasPrefix("mailto:") == true ? String(raw!.dropFirst(7)) : raw
+            if !isFromMe, senderHandleOptional == nil {
+                if messageHandleId > 0 {
+                    // handle_id points at a missing row — never substitute destination_caller_id.
+                    querySinceID = rowID
+                    continue
+                }
+                // handle_id still 0: Messages may not have linked the sender yet. Defer one poll
+                // so we don't treat a remote message as self-chat (destination_caller_id as sender).
+                if let id = rowID, !deferredIncomingRowIDs.contains(id) {
+                    deferredIncomingRowIDs.insert(id)
+                    break
+                }
+                senderHandleOptional = destinationCallerId ?? destinationOptional
             }
-            
+
             guard let senderHandle = senderHandleOptional, let text = textOptional, let destination = destinationOptional else {
+                querySinceID = rowID
                 continue
             }
             
@@ -344,6 +360,10 @@ class DatabaseHandler {
                 sendStyle: sendStyle, associatedMessageType: Int(associatedMessageType), associatedMessageGUID: associatedMessageGUID)
             
             router?.route(message: message)
+            querySinceID = rowID
+            if let rowID {
+                deferredIncomingRowIDs.remove(rowID)
+            }
         }
         
         if sqlite3_finalize(statement) != SQLITE_OK {
