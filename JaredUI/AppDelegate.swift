@@ -45,16 +45,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if (ProcessInfo().arguments[safe: 1] == "-UITesting") {
             setStateForUITesting()
         }
-        
+
         let messageDatabaseURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Messages").appendingPathComponent("chat.db")
         let viewController = NSApplication.shared.keyWindow?.contentViewController as? ViewController
 		databaseHelper = DatabaseHandler(router: pluginManager.router, databaseLocation: messageDatabaseURL, diskAccessDelegate: viewController)
 		menuBarManager = MenuBarManager(pluginManager: pluginManager)
         tunnelManager.startObserving()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(tunnelConfigDidChange(_:)),
+            name: TunnelManager.configurationDidChangeNotification,
+            object: nil
+        )
 
 		let configURL = ConfigurationHelper.getSupportDirectory().appendingPathComponent("config.json")
 		pluginManager.startWatchingConfig(at: configURL)
+    }
+
+    @objc private func tunnelConfigDidChange(_ notification: Notification) {
+        if let config = notification.userInfo?[TunnelManager.configurationUserInfoKey] as? TunnelConfiguration {
+            tunnelManager.reconfigure(config)
+        }
     }
     
     func applicationWillTerminate(_ aNotification: Notification) {
