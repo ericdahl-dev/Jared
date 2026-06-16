@@ -31,11 +31,27 @@ class WebhookTests: XCTestCase {
         URLProtocolMock.responseStatusCode = 200
     }
 
+    private func tempDeliveryFileURL() -> URL {
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("WebhookTests-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("deliveries.json")
+    }
+
+    private func makeWebhookManager(webhooks: [RichWebhook]) -> WebHookManager {
+        WebHookManager(
+            webhooks: webhooks,
+            session: config,
+            sender: sender,
+            deliveryStore: WebhookDeliveryStore(fileURL: tempDeliveryFileURL())
+        )
+    }
+
     func testValidURLsCall() {
         let url = URL(string: WEBHOOK_TEST_URL)
         URLProtocolMock.testURLs = [url: Data(MESSAGE_SERIALIZED.utf8)]
         let webhook = RichWebhook(url: WEBHOOK_TEST_URL, routes: [])
-        let webhookManager = WebHookManager(webhooks: [webhook], session: config, sender: sender)
+        let webhookManager = makeWebhookManager(webhooks: [webhook])
 
         webhookManager.didProcess(message: SAMPLE_MESSAGE)
 
@@ -54,7 +70,7 @@ class WebhookTests: XCTestCase {
         ]
         let webhook = RichWebhook(url: WEBHOOK_TEST_URL, routes: [])
         let webhookTwo = RichWebhook(url: WEBHOOK_TEST_URL_TWO, routes: [])
-        let webhookManager = WebHookManager(webhooks: [webhook, webhookTwo], session: config, sender: sender)
+        let webhookManager = makeWebhookManager(webhooks: [webhook, webhookTwo])
 
         webhookManager.didProcess(message: SAMPLE_MESSAGE)
 
@@ -68,7 +84,7 @@ class WebhookTests: XCTestCase {
         URLProtocolMock.testURLs = [url: Data(MESSAGE_SERIALIZED.utf8)]
         let route = Route(name: "test", comparisons: [.startsWith: ["!test"]], call: { _ in })
         let webhookWithRoutes = RichWebhook(url: WEBHOOK_TEST_URL, routes: [route])
-        let webhookManager = WebHookManager(webhooks: [webhookWithRoutes], session: config, sender: sender)
+        let webhookManager = makeWebhookManager(webhooks: [webhookWithRoutes])
 
         webhookManager.didProcess(message: SAMPLE_MESSAGE)
 
@@ -86,7 +102,7 @@ class WebhookTests: XCTestCase {
         let route = Route(name: "test", comparisons: [.startsWith: ["!test"]], call: { _ in })
         let webhookWithRoutes = RichWebhook(url: WEBHOOK_TEST_URL, routes: [route])
         let globalWebhook = RichWebhook(url: WEBHOOK_TEST_URL_TWO, routes: [])
-        let webhookManager = WebHookManager(webhooks: [webhookWithRoutes, globalWebhook], session: config, sender: sender)
+        let webhookManager = makeWebhookManager(webhooks: [webhookWithRoutes, globalWebhook])
 
         webhookManager.didProcess(message: SAMPLE_MESSAGE)
 
