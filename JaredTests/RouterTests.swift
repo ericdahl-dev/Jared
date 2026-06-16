@@ -8,6 +8,15 @@
 
 import XCTest
 import JaredFramework
+@testable import Jared
+
+private final class MessageDelegateSpy: MessageDelegate {
+    private(set) var messages = [Message]()
+
+    func didProcess(message: Message) {
+        messages.append(message)
+    }
+}
 
 class RouterTests: XCTestCase {
     let mockPluginManager = MockPluginManager()
@@ -82,5 +91,22 @@ class RouterTests: XCTestCase {
         let doesNotContain = Message(body: TextBody("\(isString) + Some random unrelated text."), date: Date(), sender: RouterTests.swiftPerson, recipient: RouterTests.mePerson)
         router.route(message: doesNotContain)
         XCTAssertEqual(mockPluginManager.callCounts[isString], 1, "Contains delegate was not called")
+    }
+
+    func testOutgoingMessageNotifiesDelegatesButSkipsPluginRoutes() {
+        let delegate = MessageDelegateSpy()
+        router = Router(pluginManager: mockPluginManager, messageDelegates: [delegate])
+        mockPluginManager.callCounts.removeAll()
+
+        let outgoing = Message(
+            body: TextBody("\(startWithString) from me"),
+            date: Date(),
+            sender: RouterTests.mePerson,
+            recipient: RouterTests.swiftPerson
+        )
+        router.route(message: outgoing)
+
+        XCTAssertEqual(delegate.messages.count, 1)
+        XCTAssertNil(mockPluginManager.callCounts[startWithString])
     }
 }

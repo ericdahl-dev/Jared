@@ -22,6 +22,10 @@ class Router : RouterDelegate {
     func route(message myMessage: Message) {
         messageDelegates.forEach { delegate in delegate.didProcess(message: myMessage) }
         
+        if let sender = myMessage.sender as? Person, sender.isMe {
+            return
+        }
+        
         guard myMessage.body is TextBody || myMessage.action != nil else { return }
         
         let defaults = UserDefaults.standard
