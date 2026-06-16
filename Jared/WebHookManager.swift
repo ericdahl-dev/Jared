@@ -23,33 +23,45 @@ class WebHookManager: MessageDelegate, RoutingModule {
     /// Base nanosecond unit for retry backoff (2^attempt × base). Override in tests for speed.
     var retryDelayBase: UInt64 = 1_000_000_000
 
-    /// In-memory delivery log for the current session (newest first, capped at 200).
-    private(set) var deliveryLog: [WebhookDeliveryRecord] = []
+    /// On-disk delivery log (newest first, capped). Survives app restarts so the
+    /// management UI can show history across launches.
+    let deliveryStore: WebhookDeliveryStore
+
+    /// Snapshot of persisted deliveries, newest first. Re-read from disk on access
+    /// so callers see records written by deliveries that happened in this session.
+    var deliveryLog: [WebhookDeliveryRecord] { deliveryStore.load() }
 
     private func record(_ webhookURL: String, deliveryId: String, attempt: Int,
                         statusCode: Int? = nil, error: String? = nil) {
         let rec = WebhookDeliveryRecord(deliveryId: deliveryId, webhookURL: webhookURL,
                                         date: Date(), statusCode: statusCode,
                                         errorDescription: error, attempt: attempt)
+        deliveryStore.append(rec)
         DispatchQueue.main.async {
-            self.deliveryLog.insert(rec, at: 0)
-            if self.deliveryLog.count > 200 { self.deliveryLog.removeLast() }
             NotificationCenter.default.post(name: .webhookDelivered, object: self,
                                             userInfo: ["url": webhookURL])
         }
     }
 
     public init(webhooks: [RichWebhook]?, session: URLSessionConfiguration = .ephemeral,
-                sender: MessageSender, keychain: KeychainAccessor = KeychainStore()) {
+                sender: MessageSender, keychain: KeychainAccessor = KeychainStore(),
+                deliveryStore: WebhookDeliveryStore = WebHookManager.defaultDeliveryStore()) {
         session.timeoutIntervalForResource = 10.0
         self.sender = sender
         self.keychain = keychain
+        self.deliveryStore = deliveryStore
         urlSession = URLSession(configuration: session)
         updateHooks(to: webhooks)
     }
 
     required convenience init(sender: MessageSender) {
         self.init(webhooks: nil, sender: sender)
+    }
+
+    static func defaultDeliveryStore() -> WebhookDeliveryStore {
+        let url = ConfigurationHelper.getSupportDirectory()
+            .appendingPathComponent("webhook-deliveries.json")
+        return WebhookDeliveryStore(fileURL: url)
     }
 
     // MARK: - MessageDelegate
