@@ -122,6 +122,7 @@ class WebhookManagementWindowController: NSWindowController,
     private var emptyDetail:    NSTextField!
 
     private var webhooks: [[String: Any]] = []
+    private let deliveryStore = WebHookManager.defaultDeliveryStore()
     private var deliveryLog: [WebhookDeliveryRecord] = []
 
     private var selectedRow: Int = -1 {
@@ -145,6 +146,7 @@ class WebhookManagementWindowController: NSWindowController,
         self.init(window: window)
         setupUI()
         loadWebhooks()
+        deliveryLog = deliveryStore.load()
         NotificationCenter.default.addObserver(self, selector: #selector(deliveryRecorded(_:)),
                                                name: .webhookDelivered, object: nil)
     }
@@ -326,7 +328,7 @@ class WebhookManagementWindowController: NSWindowController,
         enableRow.orientation = .horizontal
         enableRow.spacing = 10
 
-        deliveryStatus = bodyLabel("No deliveries recorded for this session")
+        deliveryStatus = bodyLabel("No deliveries recorded yet")
         deliveryStatus.textColor = .secondaryLabelColor
         deliveryStatus.font = .systemFont(ofSize: 12)
 
@@ -359,7 +361,7 @@ class WebhookManagementWindowController: NSWindowController,
         let sep = NSBox(); sep.boxType = .separator
 
         let historyTitle = sectionTitle("Delivery History")
-        let historySub   = bodyLabel("History reflects recent deliveries from the current app session.")
+        let historySub   = bodyLabel("History reflects the most recent persisted deliveries (newest first).")
         historySub.textColor = .secondaryLabelColor
         historySub.lineBreakMode = .byWordWrapping
         historySub.maximumNumberOfLines = 2
@@ -383,7 +385,7 @@ class WebhookManagementWindowController: NSWindowController,
         historyTable.addTableColumn(hCol)
         histScrollView.documentView = historyTable
 
-        historyStatus = bodyLabel("No deliveries recorded for this session")
+        historyStatus = bodyLabel("No deliveries recorded yet")
         historyStatus.textColor = .tertiaryLabelColor
         historyStatus.alignment = .center
         historyStatus.font = .systemFont(ofSize: 12)
@@ -513,7 +515,7 @@ class WebhookManagementWindowController: NSWindowController,
         guard selectedRow >= 0, selectedRow < webhooks.count,
               let url = webhooks[selectedRow]["url"] as? String,
               let last = deliveryLog.first(where: { $0.webhookURL == url }) else {
-            deliveryStatus.stringValue = "No deliveries recorded for this session"
+            deliveryStatus.stringValue = "No deliveries recorded yet"
             deliveryStatus.textColor   = .secondaryLabelColor
             return
         }
@@ -566,12 +568,13 @@ class WebhookManagementWindowController: NSWindowController,
 
     @objc private func deliveryRecorded(_ note: Notification) {
         guard let url = note.userInfo?["url"] as? String else { return }
+        deliveryLog = deliveryStore.load()
         // Refresh if currently viewing this URL or showing history
         if selectedRow >= 0, selectedRow < webhooks.count,
            webhooks[selectedRow]["url"] as? String == url {
             refreshDeliveryStatus()
             historyTable.reloadData()
-            historyStatus.isHidden = true
+            historyStatus.isHidden = !deliveryLog.contains(where: { $0.webhookURL == url })
         }
     }
 

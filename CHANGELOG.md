@@ -16,6 +16,7 @@
 - **Request headers** — every delivery now includes `X-Jared-Delivery-Id` (UUID) and `X-Jared-Webhook-Id` (webhook URL) for tracing and deduplication.
 - **Structured logging** — webhook delivery events are logged via `os.log` (subsystem: `com.zekesnider.jared`, category: `webhooks`) and are visible in Console.app without enabling Info Messages.
 - **n8n integration guide** — see `Documentation/n8n.md` for step-by-step setup, HMAC verification snippet, Docker networking, self-test command, and troubleshooting.
+- **Persistent delivery history** — webhook deliveries are now written to `~/Library/Application Support/Jared/webhook-deliveries.json` (newest first, capped at 200 records) so the Webhook Management window's Delivery History pane survives app restarts. Previously the in-memory log was lost on quit and the UI's history table never received new records — both fixed.
 
 ### Bug fixes
 

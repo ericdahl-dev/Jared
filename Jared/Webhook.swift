@@ -87,9 +87,9 @@ struct WebhookResponse: Decodable {
     var error: String?
 }
 
-// MARK: - Delivery record (in-memory, current session)
+// MARK: - Delivery record
 
-public struct WebhookDeliveryRecord {
+public struct WebhookDeliveryRecord: Codable {
     public let deliveryId: String
     public let webhookURL: String
     public let date: Date
@@ -100,4 +100,56 @@ public struct WebhookDeliveryRecord {
 
 public extension Notification.Name {
     static let webhookDelivered = Notification.Name("com.jared.webhookDelivered")
+}
+
+// MARK: - Delivery store (persistent, on disk)
+
+/// Persists `WebhookDeliveryRecord`s to a JSON file so the management UI can show
+/// delivery history across launches. Records are stored newest-first and capped
+/// at `maxRecords` (oldest evicted on overflow). All I/O is best-effort —
+/// corrupt or missing files are treated as an empty log so the app never
+/// crashes on a bad state file.
+public final class WebhookDeliveryStore {
+    public static let defaultMaxRecords = 200
+
+    private let fileURL: URL
+    private let maxRecords: Int
+    private let ioQueue = DispatchQueue(label: "com.jared.webhookDeliveryStore")
+
+    public init(fileURL: URL, maxRecords: Int = WebhookDeliveryStore.defaultMaxRecords) {
+        self.fileURL = fileURL
+        self.maxRecords = maxRecords
+    }
+
+    public func load() -> [WebhookDeliveryRecord] {
+        ioQueue.sync { readLocked() }
+    }
+
+    public func append(_ record: WebhookDeliveryRecord) {
+        ioQueue.sync {
+            var current = readLocked()
+            current.insert(record, at: 0)
+            if current.count > maxRecords {
+                current = Array(current.prefix(maxRecords))
+            }
+            writeLocked(current)
+        }
+    }
+
+    private func readLocked() -> [WebhookDeliveryRecord] {
+        guard let data = try? Data(contentsOf: fileURL) else { return [] }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return (try? decoder.decode([WebhookDeliveryRecord].self, from: data)) ?? []
+    }
+
+    private func writeLocked(_ records: [WebhookDeliveryRecord]) {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        guard let data = try? encoder.encode(records) else { return }
+        try? FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(),
+                                                 withIntermediateDirectories: true)
+        try? data.write(to: fileURL, options: .atomic)
+    }
 }
