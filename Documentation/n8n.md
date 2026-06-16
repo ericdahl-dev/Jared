@@ -106,17 +106,17 @@ Jared saves the secret to your Mac's Keychain on first load (service: `com.jared
 
 **2. Verify in n8n:**
 
-In a Function node, verify the `X-Jared-Signature` header:
+Jared signs the **raw HTTP request body bytes**. Do not re-serialize the parsed JSON object — `JSON.stringify($json.body)` can differ in key order or formatting and will fail verification even with the correct secret.
 
-```javascript
-const crypto = require('crypto');
-const secret = 'your-shared-secret';
-const body = JSON.stringify($input.body);
-const sig = 'sha256=' + crypto.createHmac('sha256', secret).update(body).digest('hex');
-if ($input.headers['x-jared-signature'] !== sig) {
-  throw new Error('Invalid signature');
-}
-return $input.all();
+In the **Webhook** node, enable **Options → Raw Body** (this keeps the exact POST bytes in the `data` binary property alongside the parsed JSON).
+
+In a **Crypto** node, choose action **HMAC**, enable **Binary Data**, and set the binary property to `data` (the default). Do not hash `JSON.stringify($json.body)` — that re-serializes the parsed object and will not match Jared's signature.
+
+Compare the Crypto output to the `X-Jared-Signature` header (`sha256=<hex>`) in an **If** node:
+
+```
+left:  {{ 'sha256=' + $json.data }}
+right: {{ $json.headers['x-jared-signature'] }}
 ```
 
 **If the secret is missing from Keychain,** Jared delivers the request unsigned and logs a warning:

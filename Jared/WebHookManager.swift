@@ -192,11 +192,14 @@ class WebHookManager: MessageDelegate, RoutingModule {
             recipient: Person(givenName: "Test", handle: "test@example.com", isMe: true)
         )
         guard let base = createWebhookBody(message),
-              var object = try? JSONSerialization.jsonObject(with: base) as? [String: Any] else {
+              var json = String(data: base, encoding: .utf8),
+              json.hasSuffix("}") else {
             return nil
         }
-        object["_jared_test"] = true
-        return try? JSONSerialization.data(withJSONObject: object)
+        // Append without JSONSerialization round-trip so key order matches JSONEncoder output.
+        json.removeLast()
+        json += ",\"_jared_test\":true}"
+        return json.data(using: .utf8)
     }
 
     static func richWebhook(from dictionary: [String: Any]) -> RichWebhook? {

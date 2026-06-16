@@ -75,3 +75,9 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots
 fastlane/test_output
+
+# gbrain per-worktree pin (local; do not commit)
+.gbrain-source
+
+# Xcode profiling
+*.profraw

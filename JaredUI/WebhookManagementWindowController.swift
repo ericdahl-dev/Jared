@@ -113,8 +113,6 @@ class WebhookManagementWindowController: NSWindowController,
     private var urlField:       NSTextField!
     private var urlValidationLabel: NSTextField!
     private var enabledCheck:   NSButton!
-    private var signingCheck:   NSButton!
-    private var secretField:    NSSecureTextField!
     private var signingStatus:  NSTextField!
     private var routesLabel:    NSTextField!
     private var deliveryStatus: NSTextField!
@@ -152,7 +150,7 @@ class WebhookManagementWindowController: NSWindowController,
 
     convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 780, height: 560),
+            contentRect: NSRect(x: 0, y: 0, width: 780, height: 520),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
@@ -360,16 +358,6 @@ class WebhookManagementWindowController: NSWindowController,
 
         enabledCheck = NSButton(checkboxWithTitle: "Enabled", target: nil, action: nil)
 
-        signingCheck = NSButton(checkboxWithTitle: "Sign requests (HMAC-SHA256)", target: nil, action: nil)
-
-        let secretLabel = bodyLabel("Signing secret")
-        secretLabel.textColor = .secondaryLabelColor
-
-        secretField = NSSecureTextField()
-        secretField.placeholderString = "Enter new secret to set or rotate"
-        secretField.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
-        secretField.bezelStyle = .roundedBezel
-
         signingStatus = bodyLabel("Unsigned deliveries")
         signingStatus.textColor = .secondaryLabelColor
         signingStatus.lineBreakMode = .byWordWrapping
@@ -461,8 +449,7 @@ class WebhookManagementWindowController: NSWindowController,
         historyStatus.alignment = .center
         historyStatus.font = .systemFont(ofSize: 12)
 
-        for v in [selectedTitle, urlLabel, urlField!, urlValidationLabel!, enableRow, secretLabel, secretField!,
-                  signingCheck, signingStatus, deliveryStatus,
+        for v in [selectedTitle, urlLabel, urlField!, urlValidationLabel!, enableRow, signingStatus, deliveryStatus,
                   buttonRow, sep, historyTitle, historySub, historyFilterSeg!,
                   histScrollView, historyStatus] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false
@@ -489,17 +476,7 @@ class WebhookManagementWindowController: NSWindowController,
             enableRow.topAnchor.constraint(equalTo: urlValidationLabel.bottomAnchor, constant: 6),
             enableRow.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
 
-            signingCheck.topAnchor.constraint(equalTo: enableRow.bottomAnchor, constant: 10),
-            signingCheck.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
-
-            secretLabel.topAnchor.constraint(equalTo: signingCheck.bottomAnchor, constant: 10),
-            secretLabel.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
-
-            secretField.topAnchor.constraint(equalTo: secretLabel.bottomAnchor, constant: 4),
-            secretField.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
-            secretField.trailingAnchor.constraint(equalTo: selectedTitle.trailingAnchor),
-
-            signingStatus.topAnchor.constraint(equalTo: secretField.bottomAnchor, constant: 4),
+            signingStatus.topAnchor.constraint(equalTo: enableRow.bottomAnchor, constant: 10),
             signingStatus.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
             signingStatus.trailingAnchor.constraint(equalTo: selectedTitle.trailingAnchor),
 
@@ -636,49 +613,22 @@ class WebhookManagementWindowController: NSWindowController,
         let hasAuthInConfig = hook["auth"] != nil
         let hasKeychainSecret = keychain.secret(for: url) != nil
 
-        signingCheck.state = (hasAuthInConfig || hasKeychainSecret) ? .on : .off
-        secretField.stringValue = ""
-
         if hasKeychainSecret {
-            signingStatus.stringValue = "Secret stored in Keychain. Enter a new value below to rotate."
+            signingStatus.stringValue = "HMAC signing enabled (secret in Keychain). Use Rotate HMAC Secret to change or remove."
             signingStatus.textColor = .secondaryLabelColor
         } else if hasAuthInConfig {
-            signingStatus.stringValue = "Signing enabled but no Keychain secret — deliveries are unsigned."
+            signingStatus.stringValue = "Signing enabled in config but no Keychain secret — use Rotate HMAC Secret to set one."
             signingStatus.textColor = .systemOrange
         } else {
-            signingStatus.stringValue = "Unsigned deliveries."
+            signingStatus.stringValue = "Unsigned deliveries. Use Rotate HMAC Secret to enable signing."
             signingStatus.textColor = .secondaryLabelColor
         }
     }
 
-    private func applySigningSettings(oldURL: String, newURL: String) -> Bool {
-        if signingCheck.state == .on {
-            let newSecret = secretField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !newSecret.isEmpty {
-                keychain.save(secret: newSecret, for: newURL)
-            } else if keychain.secret(for: newURL) == nil {
-                if oldURL != newURL, let migrated = keychain.secret(for: oldURL) {
-                    keychain.save(secret: migrated, for: newURL)
-                } else {
-                    let alert = NSAlert()
-                    alert.messageText = "Signing secret required"
-                    alert.informativeText = "Enter a new signing secret, or disable signing."
-                    if let window { alert.beginSheetModal(for: window, completionHandler: nil) }
-                    else { alert.runModal() }
-                    return false
-                }
-            }
-            webhooks[selectedRow]["auth"] = [String: Any]()
-        } else {
-            webhooks[selectedRow].removeValue(forKey: "auth")
-            keychain.delete(for: oldURL)
-            if oldURL != newURL { keychain.delete(for: newURL) }
-        }
-
-        if oldURL != newURL, signingCheck.state == .on, keychain.secret(for: oldURL) != nil {
-            keychain.delete(for: oldURL)
-        }
-        return true
+    private func migrateKeychainSecretIfNeeded(from oldURL: String, to newURL: String) {
+        guard oldURL != newURL, let secret = keychain.secret(for: oldURL) else { return }
+        keychain.save(secret: secret, for: newURL)
+        keychain.delete(for: oldURL)
     }
 
     private func refreshDeliveryStatus() {
@@ -776,10 +726,10 @@ class WebhookManagementWindowController: NSWindowController,
             return
         case .success(let url):
             hideURLValidation()
-            guard applySigningSettings(oldURL: oldURL, newURL: url.absoluteString) else { return }
-            webhooks[selectedRow]["url"]     = url.absoluteString
+            let newURL = url.absoluteString
+            migrateKeychainSecretIfNeeded(from: oldURL, to: newURL)
+            webhooks[selectedRow]["url"]     = newURL
             webhooks[selectedRow]["enabled"] = enabledCheck.state == .on
-            secretField.stringValue = ""
             reloadList()
             endpointTable.selectRowIndexes(IndexSet(integer: selectedRow), byExtendingSelection: false)
             save()
@@ -906,17 +856,20 @@ class WebhookManagementWindowController: NSWindowController,
 
         alert.beginSheetModal(for: window) { [weak self] response in
             guard response == .alertFirstButtonReturn, let self else { return }
-            let keychain = KeychainStore()
             let newSecret = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
             if newSecret.isEmpty {
-                keychain.delete(for: urlStr)
-                self.deliveryStatus.stringValue = "HMAC secret removed from Keychain"
+                self.keychain.delete(for: urlStr)
+                self.webhooks[self.selectedRow].removeValue(forKey: "auth")
+                self.deliveryStatus.stringValue = "HMAC secret removed"
                 self.deliveryStatus.textColor   = .secondaryLabelColor
             } else {
-                keychain.save(secret: newSecret, for: urlStr)
-                self.deliveryStatus.stringValue = "HMAC secret updated in Keychain ✓"
+                self.keychain.save(secret: newSecret, for: urlStr)
+                self.webhooks[self.selectedRow]["auth"] = [String: Any]()
+                self.deliveryStatus.stringValue = "HMAC secret updated ✓"
                 self.deliveryStatus.textColor   = .systemGreen
             }
+            self.refreshSigningUI(for: self.webhooks[self.selectedRow])
+            self.save()
         }
     }
 
