@@ -107,6 +107,74 @@ class WebhookDeliveryTests: XCTestCase {
         XCTAssertNil(sigHeader, "No signature header should be added when secret is missing")
     }
 
+    func testTestWebhookBodyUsesProductionShape() {
+        guard let body = WebHookManager.createTestWebhookBody(),
+              let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else {
+            XCTFail("Failed to build test webhook body"); return
+        }
+
+        XCTAssertEqual(object["_jared_test"] as? Bool, true)
+        XCTAssertNotNil(object["body"] as? [String: Any])
+        XCTAssertNotNil(object["sender"] as? [String: Any])
+        XCTAssertNotNil(object["recipient"] as? [String: Any])
+        XCTAssertNil(object["text"], "Test payload should use production Message shape, not legacy fields")
+    }
+
+    func testMakeDeliveryRequestMatchesProductionHeaders() {
+        keychain.save(secret: "test-secret", for: WEBHOOK_URL)
+        let webhook = RichWebhook(url: WEBHOOK_URL, auth: WebhookAuth(secret: "test-secret"))
+        guard let body = WebHookManager.createTestWebhookBody(),
+              let url = URL(string: WEBHOOK_URL) else {
+            XCTFail("Failed to build test request inputs"); return
+        }
+
+        let request = WebHookManager.makeDeliveryRequest(
+            url: url,
+            webhook: webhook,
+            body: body,
+            deliveryId: "delivery-123",
+            keychain: keychain
+        )
+
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/json; charset=utf-8")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "X-Jared-Delivery-Id"), "delivery-123")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "X-Jared-Webhook-Id"), WEBHOOK_URL)
+        XCTAssertNotNil(request.value(forHTTPHeaderField: "X-Jared-Signature"))
+    }
+
+    func testUpdateHooksEnablesAuthWhenKeychainHasSecret() {
+        keychain.save(secret: "keychain-only", for: WEBHOOK_URL)
+        let webhook = RichWebhook(url: WEBHOOK_URL)
+        let wm = WebHookManager(webhooks: [webhook], session: config, sender: sender, keychain: keychain)
+
+        XCTAssertNotNil(wm.webhooks.first?.auth, "Auth should be enabled when Keychain has a secret")
+        XCTAssertNil(wm.webhooks.first?.auth?.secret, "Inline secret should not be required after Keychain bootstrap")
+    }
+
+    func testRichWebhookForDeliveryResolvesKeychainSecret() {
+        keychain.save(secret: "keychain-only", for: WEBHOOK_URL)
+        let dict: [String: Any] = ["url": WEBHOOK_URL, "enabled": true]
+
+        let webhook = WebHookManager.richWebhookForDelivery(from: dict, keychain: keychain)
+
+        XCTAssertNotNil(webhook?.auth, "Delivery helper should enable signing from Keychain")
+    }
+
+    func testHMACSignatureWhenAuthEnabledViaKeychainOnly() {
+        keychain.save(secret: "test-secret", for: WEBHOOK_URL)
+        let url = URL(string: WEBHOOK_URL)
+        URLProtocolMock.testURLs = [url: Data()]
+        let webhook = RichWebhook(url: WEBHOOK_URL, auth: WebhookAuth(secret: nil))
+        let wm = WebHookManager(webhooks: [webhook], session: config, sender: sender, keychain: keychain)
+        wm.didProcess(message: SAMPLE_MESSAGE)
+        sleep(2)
+
+        XCTAssertNotNil(
+            URLProtocolMock.capturedRequests.first?.value(forHTTPHeaderField: "X-Jared-Signature"),
+            "Should sign when auth is enabled and secret lives in Keychain only"
+        )
+    }
+
     // MARK: - Retry logic
 
     func testFourxxDoesNotRetry() {
