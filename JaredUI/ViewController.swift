@@ -37,6 +37,9 @@ class ViewController: NSViewController, DiskAccessDelegate {
     private var contactsRow: StatusRowView!
     private var sendRow: StatusRowView!
 
+    private var tunnelRow: StatusRowView!
+    private var tunnelManagementWindowController: TunnelManagementWindowController?
+
     private var tunnelPublicURL: URL?
     private var tunnelError: String?
     private var defaults: UserDefaults = .standard
@@ -157,16 +160,19 @@ class ViewController: NSViewController, DiskAccessDelegate {
         let content = NSView()
         content.translatesAutoresizingMaskIntoConstraints = false
 
-        jaredRow    = StatusRowView(icon: "bubble.left.fill",      iconColor: .systemGreen,  title: "Jared")
-        diskRow     = StatusRowView(icon: "internaldrive.fill",   iconColor: .systemBlue,   title: "Full disk access")
-        apiRow      = StatusRowView(icon: "network",              iconColor: .systemIndigo, title: "REST API")
-        llmRow      = StatusRowView(icon: "brain",                iconColor: .systemTeal,   title: "LLM")
-        webhookRow  = StatusRowView(icon: "bolt.horizontal.fill", iconColor: .systemPink,   title: "Webhooks")
-        contactsRow = StatusRowView(icon: "person.fill",          iconColor: .systemOrange, title: "Contacts")
-        sendRow     = StatusRowView(icon: "envelope.fill",        iconColor: .systemPurple, title: "Messages automation")
+        jaredRow    = StatusRowView(icon: "bubble.left.fill",                 iconColor: .systemGreen,  title: "Jared")
+        diskRow     = StatusRowView(icon: "internaldrive.fill",              iconColor: .systemBlue,   title: "Full disk access")
+        apiRow      = StatusRowView(icon: "network",                         iconColor: .systemIndigo, title: "REST API")
+        tunnelRow   = StatusRowView(icon: "antenna.radiowaves.left.and.right", iconColor: .systemBlue,   title: "Tunnel")
+        llmRow      = StatusRowView(icon: "brain",                           iconColor: .systemTeal,   title: "LLM")
+        webhookRow  = StatusRowView(icon: "bolt.horizontal.fill",            iconColor: .systemPink,   title: "Webhooks")
+        contactsRow = StatusRowView(icon: "person.fill",                     iconColor: .systemOrange, title: "Contacts")
+        sendRow     = StatusRowView(icon: "envelope.fill",                   iconColor: .systemPurple, title: "Messages automation")
 
         apiRow.actionButton.target      = self
         apiRow.actionButton.action      = #selector(EnableDisableRestApiAction(_:))
+        tunnelRow.actionButton.target   = self
+        tunnelRow.actionButton.action   = #selector(openTunnelManagement(_:))
         llmRow.actionButton.target      = self
         llmRow.actionButton.action      = #selector(EnableDisableLLMAction(_:))
         webhookRow.actionButton.target  = self
@@ -181,7 +187,7 @@ class ViewController: NSViewController, DiskAccessDelegate {
         let rows: [NSView] = [
             sectionHeader("Status"),   jaredRow, diskRow,
             separator(),
-            sectionHeader("Services"), apiRow, llmRow, webhookRow,
+            sectionHeader("Services"), apiRow, tunnelRow, llmRow, webhookRow,
             separator(),
             sectionHeader("Permissions"), contactsRow, sendRow,
             separator(),
@@ -210,7 +216,7 @@ class ViewController: NSViewController, DiskAccessDelegate {
             content.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor),
         ])
 
-        for row in [jaredRow, diskRow, apiRow, llmRow, webhookRow, contactsRow, sendRow] as [NSView] {
+        for row in [jaredRow, diskRow, apiRow, tunnelRow, llmRow, webhookRow, contactsRow, sendRow] as [NSView] {
             row.leadingAnchor.constraint(equalTo: stack.leadingAnchor).isActive = true
             row.trailingAnchor.constraint(equalTo: stack.trailingAnchor).isActive = true
         }
@@ -338,33 +344,25 @@ class ViewController: NSViewController, DiskAccessDelegate {
                 self.RestApiStatusImage?.image        = NSImage(named: NSImage.statusUnavailableName)
                 self.EnableDisableRestApiUiButton?.title = "Enable API"
             } else {
-                let config = ConfigurationHelper.getConfiguration()
-                let tunnelEnabled = config.webServer.tunnel?.enabled == true
-                let needsAuth = tunnelEnabled && (config.webServer.bearerToken?.isEmpty ?? true)
-                let statusText: String
-                let state: RowState
-
-                if let tunnelError = self.tunnelError, !tunnelError.isEmpty {
-                    statusText = tunnelError
-                    state = .error
-                } else if let tunnelPublicURL = self.tunnelPublicURL {
-                    statusText = tunnelPublicURL.absoluteString
-                    state = .on
-                } else if needsAuth {
-                    statusText = "Running — set bearerToken before enabling tunnel"
-                    state = .warning
-                } else if tunnelEnabled {
-                    statusText = "Running — starting tunnel…"
-                    state = .warning
-                } else {
-                    statusText = "Running"
-                    state = .on
-                }
-
-                self.apiRow?.update(statusText: statusText, state: state, buttonTitle: "Disable")
+                self.apiRow?.update(statusText: "Running", state: .on, buttonTitle: "Disable")
                 self.RestApiStatusLabel?.stringValue  = "REST API is currently enabled"
                 self.RestApiStatusImage?.image        = NSImage(named: NSImage.statusAvailableName)
                 self.EnableDisableRestApiUiButton?.title = "Disable API"
+            }
+
+            // Tunnel row
+            let config = ConfigurationHelper.getConfiguration()
+            let tunnelEnabled = config.webServer.tunnel?.enabled == true
+            if apiOff {
+                self.tunnelRow?.update(statusText: "Requires REST API", state: .off, buttonTitle: "Manage")
+            } else if let tunnelError = self.tunnelError, !tunnelError.isEmpty {
+                self.tunnelRow?.update(statusText: tunnelError, state: .error, buttonTitle: "Manage")
+            } else if let tunnelPublicURL = self.tunnelPublicURL {
+                self.tunnelRow?.update(statusText: tunnelPublicURL.absoluteString, state: .on, buttonTitle: "Manage")
+            } else if tunnelEnabled {
+                self.tunnelRow?.update(statusText: "Starting…", state: .warning, buttonTitle: "Manage")
+            } else {
+                self.tunnelRow?.update(statusText: "Disabled", state: .off, buttonTitle: "Manage")
             }
 
             // LLM row
@@ -444,6 +442,15 @@ class ViewController: NSViewController, DiskAccessDelegate {
         }
         webhookManagementWindowController?.showWindow(self)
         webhookManagementWindowController?.window?.center()
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func openTunnelManagement(_ sender: Any) {
+        if tunnelManagementWindowController == nil {
+            tunnelManagementWindowController = TunnelManagementWindowController()
+        }
+        tunnelManagementWindowController?.showWindow(self)
+        tunnelManagementWindowController?.window?.center()
         NSApp.activate(ignoringOtherApps: true)
     }
 

@@ -89,7 +89,7 @@ class JaredWebServer: NSObject {
             let message = Message(body: parsedBody.body, date: Date(), sender: Person(givenName: nil, handle: "", isMe: true), recipient: parsedBody.recipient, attachments: parsedBody.attachments ?? [], sendStyle: nil, associatedMessageType: nil, associatedMessageGUID: nil)
             
             sender.send(message)
-            return HTTPResponse()
+            return HTTPResponse(.ok, headers: HTTPHeaders(), content: "{\"status\": \"ok\"}")
         } catch {
             return HTTPResponse(HTTPStatus(code: 400, phrase: "Bad Request"), headers: HTTPHeaders(), content: error.localizedDescription)
         }

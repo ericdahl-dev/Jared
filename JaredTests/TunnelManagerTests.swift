@@ -124,6 +124,44 @@ class TunnelManagerTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(runner.stopCallCount, 1)
     }
 
+    func testReconfigureStartsTunnelWithNewConfig() {
+        let runner = MockTunnelRunner()
+        let manager = TunnelManager(
+            configuration: TunnelConfiguration(enabled: false),
+            runner: runner,
+            keychain: MockKeychain(),
+            localPortProvider: { 3005 }
+        )
+        let defaults = UserDefaults(suiteName: #function)!
+        defaults.set(false, forKey: JaredConstants.restApiIsDisabled)
+        manager.startObserving(defaults: defaults)
+
+        manager.reconfigure(TunnelConfiguration(enabled: true, provider: .cloudflared))
+
+        XCTAssertEqual(runner.startCallCount, 1)
+        XCTAssertEqual(runner.lastCommand, .cloudflared(localPort: 3005))
+    }
+
+    func testReconfigureStopsRunningTunnel() {
+        let runner = MockTunnelRunner()
+        let manager = TunnelManager(
+            configuration: TunnelConfiguration(enabled: true, provider: .cloudflared),
+            runner: runner,
+            keychain: MockKeychain(),
+            localPortProvider: { 3005 }
+        )
+        let defaults = UserDefaults(suiteName: #function)!
+        defaults.set(false, forKey: JaredConstants.restApiIsDisabled)
+        manager.startObserving(defaults: defaults)
+        runner.onOutput?("|  https://abc-def.trycloudflare.com  |")
+
+        manager.reconfigure(TunnelConfiguration(enabled: false))
+
+        XCTAssertNil(manager.publicURL)
+        XCTAssertFalse(runner.isRunning)
+        XCTAssertGreaterThanOrEqual(runner.stopCallCount, 1)
+    }
+
     func testWebserverConfigurationDecodesTunnelBlock() throws {
         let json = """
         {
