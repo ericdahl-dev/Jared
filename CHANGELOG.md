@@ -2,6 +2,10 @@
 
 ## v1.7.0 (unreleased)
 
+### Platform
+
+- **macOS 13 Ventura is now the formal minimum.** The deployment target has been raised from 12.0 to 13.0 in the Xcode project. macOS 12 and earlier were already broken in practice after the v1.6.4 database-access fix.
+
 ### Webhook improvements
 
 - **RichWebhook type** — webhooks now support `mode`, `auth`, `deliveryPolicy`, and `failurePolicy` fields in addition to the existing `url` and `routes`. All new fields have sensible defaults; the existing `{url, routes}` format from v1.6.x loads unchanged.
