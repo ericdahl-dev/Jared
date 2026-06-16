@@ -10,7 +10,6 @@ import Foundation
 
 struct JaredConstants {
     static let restApiIsDisabled = "RestApiIsDisabled"
-    static let llmIsDisabled = "LLMIsDisabled"
     static let jaredIsDisabled = "JaredIsDisabled"
     static let contactsAccess = "ContactsAccess"
     static let sendMessageAccess = "SendMessageAccess"

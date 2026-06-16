@@ -37,12 +37,5 @@
 			"enabled": false,
 			"provider": "cloudflared"
 		}
-	},
-	"llm": {
-		"provider": "openai",
-		"apiKey": "sk-...",
-		"model": "gpt-4o",
-		"systemPrompt": "You are a helpful assistant.",
-		"rateLimitSeconds": 10.0
 	}
 }

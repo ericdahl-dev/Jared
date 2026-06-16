@@ -32,7 +32,6 @@ class ViewController: NSViewController, DiskAccessDelegate {
     private var jaredRow: StatusRowView!
     private var diskRow: StatusRowView!
     private var apiRow: StatusRowView!
-    private var llmRow: StatusRowView!
     private var webhookRow: StatusRowView!
     private var contactsRow: StatusRowView!
     private var sendRow: StatusRowView!
@@ -47,7 +46,6 @@ class ViewController: NSViewController, DiskAccessDelegate {
     private let observeKeys = [
         JaredConstants.jaredIsDisabled,
         JaredConstants.restApiIsDisabled,
-        JaredConstants.llmIsDisabled,
         JaredConstants.contactsAccess,
         JaredConstants.sendMessageAccess,
         JaredConstants.fullDiskAccess,
@@ -166,7 +164,6 @@ class ViewController: NSViewController, DiskAccessDelegate {
         diskRow     = StatusRowView(icon: "internaldrive.fill",              iconColor: .systemBlue,   title: "Full disk access")
         apiRow      = StatusRowView(icon: "network",                         iconColor: .systemIndigo, title: "REST API")
         tunnelRow   = StatusRowView(icon: "antenna.radiowaves.left.and.right", iconColor: .systemBlue,   title: "Tunnel")
-        llmRow      = StatusRowView(icon: "brain",                           iconColor: .systemTeal,   title: "LLM")
         webhookRow  = StatusRowView(icon: "bolt.horizontal.fill",            iconColor: .systemPink,   title: "Webhooks")
         contactsRow = StatusRowView(icon: "person.fill",                     iconColor: .systemOrange, title: "Contacts")
         sendRow     = StatusRowView(icon: "envelope.fill",                   iconColor: .systemPurple, title: "Messages automation")
@@ -176,8 +173,6 @@ class ViewController: NSViewController, DiskAccessDelegate {
         apiRow.actionButton.action      = #selector(EnableDisableRestApiAction(_:))
         tunnelRow.actionButton.target   = self
         tunnelRow.actionButton.action   = #selector(openTunnelManagement(_:))
-        llmRow.actionButton.target      = self
-        llmRow.actionButton.action      = #selector(EnableDisableLLMAction(_:))
         webhookRow.actionButton.target  = self
         webhookRow.actionButton.action  = #selector(openWebhookConfig(_:))
         contactsRow.actionButton.target = self
@@ -192,7 +187,7 @@ class ViewController: NSViewController, DiskAccessDelegate {
         let rows: [NSView] = [
             sectionHeader("Status"),   jaredRow, diskRow, sleepRow,
             separator(),
-            sectionHeader("Services"), apiRow, tunnelRow, llmRow, webhookRow,
+            sectionHeader("Services"), apiRow, tunnelRow, webhookRow,
             separator(),
             sectionHeader("Permissions"), contactsRow, sendRow,
             separator(),
@@ -221,7 +216,7 @@ class ViewController: NSViewController, DiskAccessDelegate {
             content.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor),
         ])
 
-        for row in [jaredRow, diskRow, sleepRow, apiRow, tunnelRow, llmRow, webhookRow, contactsRow, sendRow] as [NSView] {
+        for row in [jaredRow, diskRow, sleepRow, apiRow, tunnelRow, webhookRow, contactsRow, sendRow] as [NSView] {
             row.leadingAnchor.constraint(equalTo: stack.leadingAnchor).isActive = true
             row.trailingAnchor.constraint(equalTo: stack.trailingAnchor).isActive = true
         }
@@ -233,19 +228,15 @@ class ViewController: NSViewController, DiskAccessDelegate {
 
         let reloadBtn  = toolButton("Reload plugins",      icon: "arrow.clockwise", action: #selector(ReloadButtonPressed(_:)))
         let pluginsBtn = toolButton("Open plugins folder", icon: "folder",          action: #selector(OpenPluginsButtonAction(_:)))
-        let llmBtn     = toolButton("Configure LLM…",      icon: "brain",           action: #selector(openLLMSettings(_:)))
 
         container.addSubview(reloadBtn)
         container.addSubview(pluginsBtn)
-        container.addSubview(llmBtn)
         NSLayoutConstraint.activate([
             container.heightAnchor.constraint(equalToConstant: 56),
             reloadBtn.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
             reloadBtn.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             pluginsBtn.leadingAnchor.constraint(equalTo: reloadBtn.trailingAnchor, constant: 8),
             pluginsBtn.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            llmBtn.leadingAnchor.constraint(equalTo: pluginsBtn.trailingAnchor, constant: 8),
-            llmBtn.centerYAnchor.constraint(equalTo: container.centerYAnchor),
         ])
         return container
     }
@@ -386,14 +377,6 @@ class ViewController: NSViewController, DiskAccessDelegate {
                 self.tunnelRow?.update(statusText: "Disabled", state: .off, buttonTitle: "Manage")
             }
 
-            // LLM row
-            let llmOff = self.defaults.bool(forKey: JaredConstants.llmIsDisabled)
-            if llmOff {
-                self.llmRow?.update(statusText: "Disabled", state: .off, buttonTitle: "Enable")
-            } else {
-                self.llmRow?.update(statusText: "Enabled", state: .on, buttonTitle: "Disable")
-            }
-
             // Webhook row
             let count = self.defaults.integer(forKey: JaredConstants.webhookCount)
             let whText = count == 0 ? "None configured" : count == 1 ? "1 configured" : "\(count) configured"
@@ -497,10 +480,6 @@ class ViewController: NSViewController, DiskAccessDelegate {
         updateTouchBarButton()
     }
 
-    @IBAction func EnableDisableLLMAction(_ sender: Any) {
-        defaults.set(!defaults.bool(forKey: JaredConstants.llmIsDisabled), forKey: JaredConstants.llmIsDisabled)
-    }
-
     @IBAction func contactsButtonAction(_ sender: Any) {
         DispatchQueue.global(qos: .background).async {
             switch CNAuthorizationStatus(rawValue: self.defaults.integer(forKey: JaredConstants.contactsAccess)) {
@@ -532,11 +511,6 @@ class ViewController: NSViewController, DiskAccessDelegate {
 
     @IBAction func ReloadButtonPressed(_ sender: Any) {
         (NSApplication.shared.delegate as? AppDelegate)?.pluginManager.reload()
-    }
-
-    @objc private func openLLMSettings(_ sender: Any) {
-        let vc = LLMSettingsViewController()
-        presentAsSheet(vc)
     }
 
     func displayAccessError() {
