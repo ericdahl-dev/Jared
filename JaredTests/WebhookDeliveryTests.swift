@@ -39,7 +39,7 @@ class WebhookDeliveryTests: XCTestCase {
         let url = URL(string: WEBHOOK_URL)
         URLProtocolMock.testURLs = [url: Data()]
         let webhook = RichWebhook(url: WEBHOOK_URL)
-        let wm = WebHookManager(webhooks: [webhook], session: config, sender: sender, keychain: keychain)
+        let wm = makeWebhookManager(webhooks: [webhook])
         wm.didProcess(message: SAMPLE_MESSAGE)
         sleep(2)
 
@@ -52,7 +52,7 @@ class WebhookDeliveryTests: XCTestCase {
         let url = URL(string: WEBHOOK_URL)
         URLProtocolMock.testURLs = [url: Data()]
         let webhook = RichWebhook(url: WEBHOOK_URL)
-        let wm = WebHookManager(webhooks: [webhook], session: config, sender: sender, keychain: keychain)
+        let wm = makeWebhookManager(webhooks: [webhook])
         wm.didProcess(message: SAMPLE_MESSAGE)
         sleep(2)
 
@@ -66,7 +66,7 @@ class WebhookDeliveryTests: XCTestCase {
         let url = URL(string: WEBHOOK_URL)
         URLProtocolMock.testURLs = [url: Data()]
         let webhook = RichWebhook(url: WEBHOOK_URL, auth: WebhookAuth(secret: "test-secret"))
-        let wm = WebHookManager(webhooks: [webhook], session: config, sender: sender, keychain: keychain)
+        let wm = makeWebhookManager(webhooks: [webhook])
         wm.didProcess(message: SAMPLE_MESSAGE)
         sleep(2)
 
@@ -98,7 +98,7 @@ class WebhookDeliveryTests: XCTestCase {
         let url = URL(string: WEBHOOK_URL)
         URLProtocolMock.testURLs = [url: Data()]
         let webhook = RichWebhook(url: WEBHOOK_URL, auth: WebhookAuth(secret: nil))
-        let wm = WebHookManager(webhooks: [webhook], session: config, sender: sender, keychain: keychain)
+        let wm = makeWebhookManager(webhooks: [webhook])
         wm.didProcess(message: SAMPLE_MESSAGE)
         sleep(2)
 
@@ -156,7 +156,7 @@ class WebhookDeliveryTests: XCTestCase {
     func testUpdateHooksEnablesAuthWhenKeychainHasSecret() {
         keychain.save(secret: "keychain-only", for: WEBHOOK_URL)
         let webhook = RichWebhook(url: WEBHOOK_URL)
-        let wm = WebHookManager(webhooks: [webhook], session: config, sender: sender, keychain: keychain)
+        let wm = makeWebhookManager(webhooks: [webhook])
 
         XCTAssertNotNil(wm.webhooks.first?.auth, "Auth should be enabled when Keychain has a secret")
         XCTAssertNil(wm.webhooks.first?.auth?.secret, "Inline secret should not be required after Keychain bootstrap")
@@ -176,7 +176,7 @@ class WebhookDeliveryTests: XCTestCase {
         let url = URL(string: WEBHOOK_URL)
         URLProtocolMock.testURLs = [url: Data()]
         let webhook = RichWebhook(url: WEBHOOK_URL, auth: WebhookAuth(secret: nil))
-        let wm = WebHookManager(webhooks: [webhook], session: config, sender: sender, keychain: keychain)
+        let wm = makeWebhookManager(webhooks: [webhook])
         wm.didProcess(message: SAMPLE_MESSAGE)
         sleep(2)
 
@@ -193,7 +193,7 @@ class WebhookDeliveryTests: XCTestCase {
         URLProtocolMock.testURLs = [url: Data()]
         URLProtocolMock.responseStatusCode = 400
         let webhook = RichWebhook(url: WEBHOOK_URL)
-        let wm = WebHookManager(webhooks: [webhook], session: config, sender: sender, keychain: keychain)
+        let wm = makeWebhookManager(webhooks: [webhook])
         wm.retryDelayBase = 10_000_000
         wm.didProcess(message: SAMPLE_MESSAGE)
         sleep(2)
@@ -207,7 +207,7 @@ class WebhookDeliveryTests: XCTestCase {
         URLProtocolMock.testURLs = [url: Data()]
         URLProtocolMock.responseSequence = [500, 500, 200]
         let webhook = RichWebhook(url: WEBHOOK_URL)
-        let wm = WebHookManager(webhooks: [webhook], session: config, sender: sender, keychain: keychain)
+        let wm = makeWebhookManager(webhooks: [webhook])
         wm.retryDelayBase = 10_000_000
         wm.didProcess(message: SAMPLE_MESSAGE)
         sleep(2)
@@ -221,7 +221,7 @@ class WebhookDeliveryTests: XCTestCase {
         URLProtocolMock.testURLs = [url: Data()]
         URLProtocolMock.responseStatusCode = 500
         let webhook = RichWebhook(url: WEBHOOK_URL)
-        let wm = WebHookManager(webhooks: [webhook], session: config, sender: sender, keychain: keychain)
+        let wm = makeWebhookManager(webhooks: [webhook])
         wm.retryDelayBase = 10_000_000
         wm.didProcess(message: SAMPLE_MESSAGE)
         sleep(2)
@@ -236,7 +236,7 @@ class WebhookDeliveryTests: XCTestCase {
         URLProtocolMock.testURLs = [url: Data()]
         URLProtocolMock.responseStatusCode = 500
         let webhook = RichWebhook(url: WEBHOOK_URL, mode: .command)
-        let wm = WebHookManager(webhooks: [webhook], session: config, sender: sender, keychain: keychain)
+        let wm = makeWebhookManager(webhooks: [webhook])
         wm.retryDelayBase = 10_000_000
         wm.didProcess(message: SAMPLE_MESSAGE)
         sleep(2)
@@ -250,7 +250,7 @@ class WebhookDeliveryTests: XCTestCase {
         URLProtocolMock.testURLs = [url: Data(responseJSON.utf8)]
         URLProtocolMock.responseStatusCode = 200
         let webhook = RichWebhook(url: WEBHOOK_URL, mode: .command)
-        let wm = WebHookManager(webhooks: [webhook], session: config, sender: sender, keychain: keychain)
+        let wm = makeWebhookManager(webhooks: [webhook])
         wm.didProcess(message: SAMPLE_MESSAGE)
         sleep(2)
 
@@ -265,7 +265,7 @@ class WebhookDeliveryTests: XCTestCase {
         URLProtocolMock.testURLs = [url: Data(responseJSON.utf8)]
         URLProtocolMock.responseStatusCode = 200
         let webhook = RichWebhook(url: WEBHOOK_URL, mode: .command)
-        let wm = WebHookManager(webhooks: [webhook], session: config, sender: sender, keychain: keychain)
+        let wm = makeWebhookManager(webhooks: [webhook])
         wm.didProcess(message: SAMPLE_MESSAGE)
         sleep(2)
 
@@ -279,6 +279,16 @@ class WebhookDeliveryTests: XCTestCase {
             .appendingPathComponent("WebhookDeliveryTests-\(UUID().uuidString)", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appendingPathComponent("deliveries.json")
+    }
+
+    private func makeWebhookManager(webhooks: [RichWebhook]) -> WebHookManager {
+        WebHookManager(
+            webhooks: webhooks,
+            session: config,
+            sender: sender,
+            keychain: keychain,
+            deliveryStore: WebhookDeliveryStore(fileURL: tempDeliveryFileURL())
+        )
     }
 
     private func sampleRecord(url: String = "https://example.com/hook",
