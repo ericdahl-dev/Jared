@@ -9,6 +9,7 @@
 import XCTest
 @testable import Jared
 import JaredFramework
+import SQLite3
 
 private final class DiskAccessDelegateSpy: DiskAccessDelegate {
     private(set) var didDisplayAccessError = false
@@ -83,6 +84,276 @@ class DatabaseHandlerTest: XCTestCase {
         XCTAssertEqual(localRouter.messages.count, 2, "Both messages routed")
     }
 
+    func testIncomingMessageWithMissingHandleDoesNotUseDestinationCallerIdAsSender() throws {
+        let tempDirectory = try makeTemporaryDatabaseDirectory()
+        let tempDatabaseURL = tempDirectory.appendingPathComponent("scaffold.db")
+        try FileManager.default.copyItem(at: testDatabaseLocation, to: tempDatabaseURL)
+        try Self.enableWAL(at: tempDatabaseURL)
+
+        let localRouter = MockRouter()
+        var handler: DatabaseHandler? = DatabaseHandler(
+            router: localRouter,
+            databaseLocation: tempDatabaseURL,
+            diskAccessDelegate: nil,
+            enableBackgroundPolling: false,
+            contactNameResolver: { _ in nil }
+        )
+        let localHelper = DatabaseTestHelper(databaseLocation: tempDatabaseURL)
+        defer {
+            handler = nil
+            try? FileManager.default.removeItem(at: tempDirectory)
+        }
+
+        let localPhone = "+18473125379"
+        let chatID = localHelper.insertChat(accountId: localPhone, service: "iMessage")
+        let timestamp = currentTimestamp()
+        let messageID = localHelper.insertMessage(
+            guid: "missing-handle",
+            messageText: "Cool",
+            handleID: 99999,
+            service: "iMessage",
+            account: localPhone,
+            accountGuid: "account-guid",
+            date: timestamp,
+            dateRead: nil,
+            dateDelivered: nil,
+            isFromMe: false,
+            hasAttachments: false,
+            destinationCallerID: localPhone
+        )
+        localHelper.linkChatAndMessage(chatID: chatID, messageID: messageID, date: timestamp)
+
+        _ = handler?.queryNewRecords()
+
+        XCTAssertEqual(localRouter.messages.count, 0, "Incoming message without sender handle should be skipped")
+    }
+
+    func testIncomingOneToOneMessageUsesRemoteHandleNotLocalDestination() throws {
+        let tempDirectory = try makeTemporaryDatabaseDirectory()
+        let tempDatabaseURL = tempDirectory.appendingPathComponent("scaffold.db")
+        try FileManager.default.copyItem(at: testDatabaseLocation, to: tempDatabaseURL)
+        try Self.enableWAL(at: tempDatabaseURL)
+
+        let localRouter = MockRouter()
+        var handler: DatabaseHandler? = DatabaseHandler(
+            router: localRouter,
+            databaseLocation: tempDatabaseURL,
+            diskAccessDelegate: nil,
+            enableBackgroundPolling: false,
+            contactNameResolver: { _ in nil }
+        )
+        let localHelper = DatabaseTestHelper(databaseLocation: tempDatabaseURL)
+        defer {
+            handler = nil
+            try? FileManager.default.removeItem(at: tempDirectory)
+        }
+
+        let localPhone = "+18473125379"
+        let remotePhone = "+18606558466"
+        let remoteHandleID = localHelper.insertHandle(id: remotePhone, service: "iMessage")
+        let chatID = localHelper.insertChat(accountId: localPhone, service: "iMessage")
+        localHelper.linkChatAndHandle(chatID: chatID, handleID: remoteHandleID)
+
+        let timestamp = currentTimestamp()
+        let messageID = localHelper.insertMessage(
+            guid: "27EAF9AF-2134-431A-A3E7-BC758959DD88",
+            messageText: "Cool",
+            handleID: remoteHandleID,
+            service: "iMessage",
+            account: localPhone,
+            accountGuid: "account-guid",
+            date: timestamp,
+            dateRead: nil,
+            dateDelivered: nil,
+            isFromMe: false,
+            hasAttachments: false,
+            destinationCallerID: localPhone,
+            cacheRoomNamesNull: true
+        )
+        localHelper.linkChatAndMessage(chatID: chatID, messageID: messageID, date: timestamp)
+
+        _ = handler?.queryNewRecords()
+
+        XCTAssertEqual(localRouter.messages.count, 1)
+        let message = try XCTUnwrap(localRouter.messages.first)
+        let sender = try XCTUnwrap(message.sender as? Person)
+        let recipient = try XCTUnwrap(message.recipient as? Person)
+        XCTAssertEqual(sender.handle, remotePhone)
+        XCTAssertFalse(sender.isMe)
+        XCTAssertEqual(recipient.handle, localPhone)
+        XCTAssertTrue(recipient.isMe)
+        XCTAssertNotEqual(sender.handle, recipient.handle)
+    }
+
+    func testIncomingMessageDefersUntilHandleIdIsLinked() throws {
+        let tempDirectory = try makeTemporaryDatabaseDirectory()
+        let tempDatabaseURL = tempDirectory.appendingPathComponent("scaffold.db")
+        try FileManager.default.copyItem(at: testDatabaseLocation, to: tempDatabaseURL)
+        try Self.enableWAL(at: tempDatabaseURL)
+
+        let localRouter = MockRouter()
+        var handler: DatabaseHandler? = DatabaseHandler(
+            router: localRouter,
+            databaseLocation: tempDatabaseURL,
+            diskAccessDelegate: nil,
+            enableBackgroundPolling: false,
+            contactNameResolver: { _ in nil }
+        )
+        let localHelper = DatabaseTestHelper(databaseLocation: tempDatabaseURL)
+        defer {
+            handler = nil
+            try? FileManager.default.removeItem(at: tempDirectory)
+        }
+
+        let localPhone = "+18473125379"
+        let remotePhone = "+18606558466"
+        let remoteHandleID = localHelper.insertHandle(id: remotePhone, service: "iMessage")
+        let chatID = localHelper.insertChat(accountId: localPhone, service: "iMessage")
+        localHelper.linkChatAndHandle(chatID: chatID, handleID: remoteHandleID)
+
+        let timestamp = currentTimestamp()
+        let messageID = localHelper.insertMessage(
+            guid: "deferred-handle-link",
+            messageText: "Hello",
+            handleID: 0,
+            service: "iMessage",
+            account: localPhone,
+            accountGuid: "account-guid",
+            date: timestamp,
+            dateRead: nil,
+            dateDelivered: nil,
+            isFromMe: false,
+            hasAttachments: false,
+            destinationCallerID: localPhone,
+            cacheRoomNamesNull: true
+        )
+        localHelper.linkChatAndMessage(chatID: chatID, messageID: messageID, date: timestamp)
+
+        _ = handler?.queryNewRecords()
+        XCTAssertEqual(localRouter.messages.count, 0, "Should defer instead of using destination_caller_id as sender")
+
+        localHelper.updateMessageHandleId(messageID: messageID, handleID: remoteHandleID)
+
+        _ = handler?.queryNewRecords()
+
+        XCTAssertEqual(localRouter.messages.count, 1)
+        let message = try XCTUnwrap(localRouter.messages.first)
+        let sender = try XCTUnwrap(message.sender as? Person)
+        let recipient = try XCTUnwrap(message.recipient as? Person)
+        XCTAssertEqual(sender.handle, remotePhone)
+        XCTAssertFalse(sender.isMe)
+        XCTAssertEqual(recipient.handle, localPhone)
+        XCTAssertTrue(recipient.isMe)
+    }
+
+    func testSelfChatMessageWithNullHandleRoutesUsingDestinationCallerId() throws {
+        let tempDirectory = try makeTemporaryDatabaseDirectory()
+        let tempDatabaseURL = tempDirectory.appendingPathComponent("scaffold.db")
+        try FileManager.default.copyItem(at: testDatabaseLocation, to: tempDatabaseURL)
+        try Self.enableWAL(at: tempDatabaseURL)
+
+        let localRouter = MockRouter()
+        var handler: DatabaseHandler? = DatabaseHandler(
+            router: localRouter,
+            databaseLocation: tempDatabaseURL,
+            diskAccessDelegate: nil,
+            enableBackgroundPolling: false,
+            contactNameResolver: { _ in nil }
+        )
+        let localHelper = DatabaseTestHelper(databaseLocation: tempDatabaseURL)
+        defer {
+            handler = nil
+            try? FileManager.default.removeItem(at: tempDirectory)
+        }
+
+        let localPhone = "+18473125379"
+        let chatID = localHelper.insertChat(accountId: localPhone, service: "iMessage")
+        let timestamp = currentTimestamp()
+        let messageID = localHelper.insertMessage(
+            guid: "self-chat-null-handle",
+            messageText: "note to self",
+            handleID: 0,
+            service: "iMessage",
+            account: localPhone,
+            accountGuid: "account-guid",
+            date: timestamp,
+            dateRead: nil,
+            dateDelivered: nil,
+            isFromMe: false,
+            hasAttachments: false,
+            destinationCallerID: localPhone,
+            cacheRoomNamesNull: true,
+            nullHandleID: true
+        )
+        localHelper.linkChatAndMessage(chatID: chatID, messageID: messageID, date: timestamp)
+
+        _ = handler?.queryNewRecords()
+        XCTAssertEqual(localRouter.messages.count, 0, "Self-chat defers one poll while handle_id is unset")
+
+        _ = handler?.queryNewRecords()
+
+        XCTAssertEqual(localRouter.messages.count, 1)
+        let message = try XCTUnwrap(localRouter.messages.first)
+        let sender = try XCTUnwrap(message.sender as? Person)
+        let recipient = try XCTUnwrap(message.recipient as? Person)
+        XCTAssertEqual(sender.handle, localPhone)
+        XCTAssertEqual(recipient.handle, localPhone)
+    }
+
+    func testOutgoingMessageRoutesWithSenderIsMe() throws {
+        let tempDirectory = try makeTemporaryDatabaseDirectory()
+        let tempDatabaseURL = tempDirectory.appendingPathComponent("scaffold.db")
+        try FileManager.default.copyItem(at: testDatabaseLocation, to: tempDatabaseURL)
+        try Self.enableWAL(at: tempDatabaseURL)
+
+        let localRouter = MockRouter()
+        var handler: DatabaseHandler? = DatabaseHandler(
+            router: localRouter,
+            databaseLocation: tempDatabaseURL,
+            diskAccessDelegate: nil,
+            enableBackgroundPolling: false,
+            contactNameResolver: { _ in nil }
+        )
+        let localHelper = DatabaseTestHelper(databaseLocation: tempDatabaseURL)
+        defer {
+            handler = nil
+            try? FileManager.default.removeItem(at: tempDirectory)
+        }
+
+        let localPhone = "+18473125379"
+        let remotePhone = "+18606558466"
+        let remoteHandleID = localHelper.insertHandle(id: remotePhone, service: "iMessage")
+        let chatID = localHelper.insertChat(accountId: localPhone, service: "iMessage")
+        localHelper.linkChatAndHandle(chatID: chatID, handleID: remoteHandleID)
+        let timestamp = currentTimestamp()
+        let messageID = localHelper.insertMessage(
+            guid: "outbound-message",
+            messageText: "sent from mac",
+            handleID: remoteHandleID,
+            service: "iMessage",
+            account: localPhone,
+            accountGuid: "account-guid",
+            date: timestamp,
+            dateRead: nil,
+            dateDelivered: nil,
+            isFromMe: true,
+            hasAttachments: false,
+            destinationCallerID: localPhone
+        )
+        localHelper.linkChatAndMessage(chatID: chatID, messageID: messageID, date: timestamp)
+
+        _ = handler?.queryNewRecords()
+
+        XCTAssertEqual(localRouter.messages.count, 1)
+        let message = try XCTUnwrap(localRouter.messages.first)
+        let sender = try XCTUnwrap(message.sender as? Person)
+        let recipient = try XCTUnwrap(message.recipient as? Person)
+        XCTAssertTrue(sender.isMe)
+        XCTAssertEqual(sender.handle, localPhone)
+        XCTAssertFalse(recipient.isMe)
+        XCTAssertEqual(recipient.handle, remotePhone)
+    }
+
     func testInitDoesNotCreateMissingWALFile() throws {
         let tempDirectory = try makeTemporaryDatabaseDirectory()
         let tempDatabaseURL = tempDirectory.appendingPathComponent("scaffold.db")
@@ -134,6 +405,17 @@ class DatabaseHandlerTest: XCTestCase {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
+    }
+
+    private static func enableWAL(at databaseURL: URL) throws {
+        var db: OpaquePointer?
+        guard sqlite3_open(databaseURL.path, &db) == SQLITE_OK else {
+            throw NSError(domain: "DatabaseHandlerTest", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not open test database"])
+        }
+        defer { sqlite3_close(db) }
+        guard sqlite3_exec(db, "PRAGMA journal_mode=WAL;", nil, nil, nil) == SQLITE_OK else {
+            throw NSError(domain: "DatabaseHandlerTest", code: 2, userInfo: [NSLocalizedDescriptionKey: "Could not enable WAL"])
+        }
     }
 
 }

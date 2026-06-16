@@ -52,6 +52,15 @@ class MenuBarManager {
         toggleItem.target = self
         menu.addItem(toggleItem)
 
+        let sleepItem = NSMenuItem(
+            title: "Keep Mac Awake",
+            action: #selector(togglePreventSleep),
+            keyEquivalent: ""
+        )
+        sleepItem.target = self
+        sleepItem.state = UserDefaults.standard.bool(forKey: JaredConstants.preventSystemSleep) ? .on : .off
+        menu.addItem(sleepItem)
+
         let reloadItem = NSMenuItem(title: "Reload Plugins", action: #selector(reloadPlugins), keyEquivalent: "r")
         reloadItem.target = self
         menu.addItem(reloadItem)
@@ -73,6 +82,11 @@ class MenuBarManager {
     @objc private func toggleEnabled() {
         let current = UserDefaults.standard.bool(forKey: JaredConstants.jaredIsDisabled)
         UserDefaults.standard.set(!current, forKey: JaredConstants.jaredIsDisabled)
+    }
+
+    @objc private func togglePreventSleep() {
+        let current = UserDefaults.standard.bool(forKey: JaredConstants.preventSystemSleep)
+        UserDefaults.standard.set(!current, forKey: JaredConstants.preventSystemSleep)
     }
 
     @objc private func reloadPlugins() {

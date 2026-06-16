@@ -22,7 +22,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             JaredConstants.jaredIsDisabled: false,
             JaredConstants.restApiIsDisabled: true,
             JaredConstants.contactsAccess: CNAuthorizationStatus.notDetermined.rawValue,
-            JaredConstants.fullDiskAccess: true
+            JaredConstants.fullDiskAccess: true,
+            JaredConstants.preventSystemSleep: false
         ])
         
         let config = ConfigurationHelper.getConfiguration()
@@ -61,6 +62,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 		let configURL = ConfigurationHelper.getSupportDirectory().appendingPathComponent("config.json")
 		pluginManager.startWatchingConfig(at: configURL)
+        SystemSleepPreventer.shared.start()
     }
 
     @objc private func tunnelConfigDidChange(_ notification: Notification) {
@@ -70,6 +72,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationWillTerminate(_ aNotification: Notification) {
+        SystemSleepPreventer.shared.stop()
         tunnelManager.stop()
     }
     
