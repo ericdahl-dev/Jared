@@ -130,6 +130,12 @@ class WebhookManagementWindowController: NSWindowController,
     private let deliveryStore = WebHookManager.defaultDeliveryStore()
     private var deliveryLog: [WebhookDeliveryRecord] = []
 
+    private var endpointSearchField: NSSearchField!
+    private var visibleEndpointIndices: [Int] = []
+
+    /// Index into `webhooks` (the unfiltered array) of the currently selected
+    /// endpoint, or -1 for none. UI rows are translated through
+    /// `visibleEndpointIndices` for filtered tables.
     private var selectedRow: Int = -1 {
         didSet { updateDetail() }
     }
@@ -188,6 +194,15 @@ class WebhookManagementWindowController: NSWindowController,
         btnStack.orientation = .horizontal
         btnStack.spacing = 8
 
+        endpointSearchField = NSSearchField()
+        endpointSearchField.placeholderString = "Search endpoints"
+        endpointSearchField.target = self
+        endpointSearchField.action = #selector(endpointSearchChanged(_:))
+        endpointSearchField.sendsSearchStringImmediately = false
+        endpointSearchField.sendsWholeSearchString = false
+        endpointSearchField.controlSize = .small
+        endpointSearchField.font = .systemFont(ofSize: 11)
+
         let leftScrollView = NSScrollView()
         leftScrollView.borderType = .noBorder
         leftScrollView.hasVerticalScroller = true
@@ -202,12 +217,17 @@ class WebhookManagementWindowController: NSWindowController,
         endpointTable.selectionHighlightStyle = .regular
         endpointTable.delegate = self
         endpointTable.dataSource = self
+        let endpointMenu = NSMenu()
+        endpointMenu.addItem(withTitle: "Copy URL",
+                             action: #selector(copyEndpointURL(_:)),
+                             keyEquivalent: "")
+        endpointTable.menu = endpointMenu
         let epCol = NSTableColumn(identifier: .init("endpoint"))
         epCol.resizingMask = .autoresizingMask
         endpointTable.addTableColumn(epCol)
         leftScrollView.documentView = endpointTable
 
-        for v in [leftTitle, leftSub, btnStack, leftScrollView] as [NSView] {
+        for v in [leftTitle, leftSub, btnStack, endpointSearchField!, leftScrollView] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false
             leftPanel.addSubview(v)
         }
@@ -223,7 +243,11 @@ class WebhookManagementWindowController: NSWindowController,
             btnStack.topAnchor.constraint(equalTo: leftSub.bottomAnchor, constant: 10),
             btnStack.leadingAnchor.constraint(equalTo: leftTitle.leadingAnchor),
 
-            leftScrollView.topAnchor.constraint(equalTo: btnStack.bottomAnchor, constant: 8),
+            endpointSearchField.topAnchor.constraint(equalTo: btnStack.bottomAnchor, constant: 8),
+            endpointSearchField.leadingAnchor.constraint(equalTo: leftTitle.leadingAnchor),
+            endpointSearchField.trailingAnchor.constraint(equalTo: leftPanel.trailingAnchor, constant: -8),
+
+            leftScrollView.topAnchor.constraint(equalTo: endpointSearchField.bottomAnchor, constant: 6),
             leftScrollView.leadingAnchor.constraint(equalTo: leftPanel.leadingAnchor),
             leftScrollView.trailingAnchor.constraint(equalTo: leftPanel.trailingAnchor),
             leftScrollView.bottomAnchor.constraint(equalTo: leftPanel.bottomAnchor),
@@ -399,6 +423,14 @@ class WebhookManagementWindowController: NSWindowController,
         historyTable.selectionHighlightStyle = .none
         historyTable.delegate = self
         historyTable.dataSource = self
+        let historyMenu = NSMenu()
+        historyMenu.addItem(withTitle: "Copy Delivery ID",
+                            action: #selector(copyDeliveryId(_:)),
+                            keyEquivalent: "")
+        historyMenu.addItem(withTitle: "Copy Webhook URL",
+                            action: #selector(copyDeliveryWebhookURL(_:)),
+                            keyEquivalent: "")
+        historyTable.menu = historyMenu
         let hCol = NSTableColumn(identifier: .init("history"))
         hCol.resizingMask = .autoresizingMask
         historyTable.addTableColumn(hCol)
@@ -510,9 +542,25 @@ class WebhookManagementWindowController: NSWindowController,
     }
 
     private func reloadList() {
+        refreshVisibleEndpointIndices()
         endpointTable.reloadData()
         if selectedRow >= webhooks.count { selectedRow = -1 }
+        // Re-sync table selection to the actual selectedRow after filtering
+        if let visible = visibleEndpointIndices.firstIndex(of: selectedRow) {
+            endpointTable.selectRowIndexes(IndexSet(integer: visible), byExtendingSelection: false)
+        } else if endpointTable.selectedRow >= 0 {
+            endpointTable.deselectAll(nil)
+        }
         updateDetail()
+    }
+
+    private func refreshVisibleEndpointIndices() {
+        let query = endpointSearchField?.stringValue ?? ""
+        visibleEndpointIndices = WebhookEndpointSearch.indices(matching: query, in: webhooks)
+    }
+
+    @objc private func endpointSearchChanged(_ sender: NSSearchField) {
+        reloadList()
     }
 
     private func updateDetail() {
@@ -574,7 +622,7 @@ class WebhookManagementWindowController: NSWindowController,
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int {
-        if tableView === endpointTable { return webhooks.count }
+        if tableView === endpointTable { return visibleEndpointIndices.count }
         return visibleDeliveryRecords().count
     }
 
@@ -584,7 +632,8 @@ class WebhookManagementWindowController: NSWindowController,
             let cell = (tableView.makeView(withIdentifier: id, owner: nil) as? EndpointCellView)
                         ?? EndpointCellView(frame: .zero)
             cell.identifier = id
-            cell.configure(with: webhooks[row])
+            guard row < visibleEndpointIndices.count else { return cell }
+            cell.configure(with: webhooks[visibleEndpointIndices[row]])
             return cell
         } else {
             let id   = NSUserInterfaceItemIdentifier("del")
@@ -605,7 +654,12 @@ class WebhookManagementWindowController: NSWindowController,
 
     func tableViewSelectionDidChange(_ notification: Notification) {
         guard let tv = notification.object as? NSTableView, tv === endpointTable else { return }
-        selectedRow = endpointTable.selectedRow
+        let visibleRow = endpointTable.selectedRow
+        if visibleRow >= 0 && visibleRow < visibleEndpointIndices.count {
+            selectedRow = visibleEndpointIndices[visibleRow]
+        } else {
+            selectedRow = -1
+        }
     }
 
     // MARK: - Notification
@@ -637,7 +691,6 @@ class WebhookManagementWindowController: NSWindowController,
             webhooks[selectedRow]["url"]     = url.absoluteString
             webhooks[selectedRow]["enabled"] = enabledCheck.state == .on
             reloadList()
-            endpointTable.selectRowIndexes(IndexSet(integer: selectedRow), byExtendingSelection: false)
             save()
         }
     }
@@ -810,12 +863,15 @@ class WebhookManagementWindowController: NSWindowController,
             case .success(let url):
                 let mode = modeBtn.selectedItem?.title ?? "notify"
                 self.webhooks.append(["url": url.absoluteString, "mode": mode, "enabled": true])
+                // Clear any active search so the newly-added webhook is visible
+                self.endpointSearchField?.stringValue = ""
+                let last = self.webhooks.count - 1
+                self.selectedRow = last
                 self.reloadList()
                 self.save()
-                let last = self.webhooks.count - 1
-                self.endpointTable.selectRowIndexes(IndexSet(integer: last), byExtendingSelection: false)
-                self.endpointTable.scrollRowToVisible(last)
-                self.selectedRow = last
+                if let visible = self.visibleEndpointIndices.firstIndex(of: last) {
+                    self.endpointTable.scrollRowToVisible(visible)
+                }
             }
         }
     }
@@ -823,4 +879,34 @@ class WebhookManagementWindowController: NSWindowController,
     @objc private func refresh(_ sender: Any) { loadWebhooks() }
 
     @objc private func closeWindow() { window?.close() }
+
+    // MARK: - Copy actions
+
+    @objc private func copyEndpointURL(_ sender: Any) {
+        let visibleRow = endpointTable.clickedRow
+        guard visibleRow >= 0, visibleRow < visibleEndpointIndices.count else { return }
+        let idx = visibleEndpointIndices[visibleRow]
+        guard let url = webhooks[idx]["url"] as? String else { return }
+        writeToPasteboard(url)
+    }
+
+    @objc private func copyDeliveryId(_ sender: Any) {
+        let row = historyTable.clickedRow
+        let records = visibleDeliveryRecords()
+        guard row >= 0, row < records.count else { return }
+        writeToPasteboard(records[row].deliveryId)
+    }
+
+    @objc private func copyDeliveryWebhookURL(_ sender: Any) {
+        let row = historyTable.clickedRow
+        let records = visibleDeliveryRecords()
+        guard row >= 0, row < records.count else { return }
+        writeToPasteboard(records[row].webhookURL)
+    }
+
+    private func writeToPasteboard(_ string: String) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(string, forType: .string)
+    }
 }

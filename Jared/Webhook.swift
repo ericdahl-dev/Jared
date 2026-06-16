@@ -139,6 +139,24 @@ public extension Notification.Name {
     static let webhookDelivered = Notification.Name("com.jared.webhookDelivered")
 }
 
+// MARK: - Endpoint search
+
+public enum WebhookEndpointSearch {
+    /// Case-insensitive substring match on the `url` field of each webhook dict.
+    /// Returns indices into the original array, in original order.
+    /// Empty / whitespace-only queries return all indices.
+    public static func indices(matching query: String, in webhooks: [[String: Any]]) -> [Int] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if trimmed.isEmpty {
+            return Array(webhooks.indices)
+        }
+        return webhooks.enumerated().compactMap { (idx, hook) -> Int? in
+            guard let url = hook["url"] as? String else { return nil }
+            return url.lowercased().contains(trimmed) ? idx : nil
+        }
+    }
+}
+
 // MARK: - Delivery filter
 
 public enum WebhookDeliveryFilter {

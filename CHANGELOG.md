@@ -19,6 +19,8 @@
 - **Persistent delivery history** — webhook deliveries are now written to `~/Library/Application Support/Jared/webhook-deliveries.json` (newest first, capped at 200 records) so the Webhook Management window's Delivery History pane survives app restarts. Previously the in-memory log was lost on quit and the UI's history table never received new records — both fixed.
 - **Inline URL validation in Webhook Management** — the endpoint URL field now shows an inline hint as you type (empty / not a URL / missing scheme / unsupported scheme like `ftp://` or `javascript:` / missing host) and the Save button is disabled until the URL parses cleanly. The Add Webhook dialog runs the same validator and re-prompts with the error message on bad input instead of silently saving nothing.
 - **Failures-only filter on Delivery History** — segmented control above the history table toggles between `All` and `Failures only`. Failures are anything that didn't return 2xx (4xx, 5xx, and network/timeout errors). Empty-state copy adapts to the active filter.
+- **Searchable endpoint list** — search field above the endpoints sidebar filters the list by case-insensitive substring match on URL. Selection is preserved when the filter still includes the row, and cleared otherwise. Adding a new webhook clears the search so the new entry is visible.
+- **Copy-to-clipboard context menus** — right-click on an endpoint row to copy its URL; right-click on a delivery row to copy its delivery ID or webhook URL.
 
 ### Bug fixes
 

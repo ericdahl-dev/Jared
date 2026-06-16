@@ -273,6 +273,61 @@ class WebhookDeliveryTests: XCTestCase {
         XCTAssertEqual(loaded.first?.errorDescription, "timeout")
     }
 
+    // MARK: - Endpoint search
+
+    func testEndpointSearchEmptyQueryReturnsAllIndices() {
+        let hooks: [[String: Any]] = [
+            ["url": "https://a.example.com/hook"],
+            ["url": "https://b.example.com/hook"],
+        ]
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "", in: hooks), [0, 1])
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "   ", in: hooks), [0, 1],
+                       "Whitespace-only query must behave as empty")
+    }
+
+    func testEndpointSearchSubstringMatchIsCaseInsensitive() {
+        let hooks: [[String: Any]] = [
+            ["url": "https://Alpha.example.com/hook"],
+            ["url": "https://beta.example.com/hook"],
+            ["url": "https://gamma.example.com/hook"],
+        ]
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "BETA", in: hooks), [1])
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "alpha", in: hooks), [0])
+    }
+
+    func testEndpointSearchMatchesPartialURL() {
+        let hooks: [[String: Any]] = [
+            ["url": "https://hooks.slack.com/services/T000/B000/abc"],
+            ["url": "https://discord.com/api/webhooks/123/xyz"],
+        ]
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "slack", in: hooks), [0])
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "/webhooks/", in: hooks), [1])
+    }
+
+    func testEndpointSearchNoMatchReturnsEmpty() {
+        let hooks: [[String: Any]] = [["url": "https://example.com/hook"]]
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "nope", in: hooks), [])
+    }
+
+    func testEndpointSearchPreservesOrder() {
+        let hooks: [[String: Any]] = [
+            ["url": "https://a.example.com/hook"],
+            ["url": "https://z.example.com/hook"],
+            ["url": "https://a-test.example.com/hook"],
+        ]
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "example", in: hooks), [0, 1, 2],
+                       "Order of input must be preserved")
+    }
+
+    func testEndpointSearchHandlesMissingURLField() {
+        let hooks: [[String: Any]] = [
+            ["url": "https://valid.example.com/hook"],
+            ["enabled": true], // no url field
+        ]
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "valid", in: hooks), [0],
+                       "Webhook dicts missing a url field must not crash and must not match")
+    }
+
     // MARK: - WebHookManager integration with persistence
 
     func testWebHookManagerLoadsExistingDeliveriesOnInit() {
