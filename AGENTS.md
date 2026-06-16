@@ -112,3 +112,17 @@ The app checks these at launch and stores status in `UserDefaults` under keys in
 ## Localization
 
 Localizable strings are in `Jared/en.lproj/Localizable.strings` and `Jared/ja.lproj/Localizable.strings` (Japanese). Use `NSLocalizedString("key")` — no `comment:` parameter in this codebase.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on `ericdahl-dev/Jared` via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — `CONTEXT.md` and `docs/adr/` at repo root when they exist. See `docs/agents/domain.md`.
