@@ -192,4 +192,233 @@ class WebhookDeliveryTests: XCTestCase {
 
         XCTAssertEqual(sender.calls.count, 0, "Command mode should not send reply when success=false")
     }
+
+    // MARK: - Persistent delivery history
+
+    private func tempDeliveryFileURL() -> URL {
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("WebhookDeliveryTests-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("deliveries.json")
+    }
+
+    private func sampleRecord(url: String = "https://example.com/hook",
+                              deliveryId: String = UUID().uuidString,
+                              statusCode: Int? = 200,
+                              error: String? = nil,
+                              attempt: Int = 1,
+                              date: Date = Date()) -> WebhookDeliveryRecord {
+        WebhookDeliveryRecord(deliveryId: deliveryId, webhookURL: url, date: date,
+                              statusCode: statusCode, errorDescription: error, attempt: attempt)
+    }
+
+    func testDeliveryStoreLoadReturnsEmptyWhenFileMissing() {
+        let store = WebhookDeliveryStore(fileURL: tempDeliveryFileURL())
+        XCTAssertEqual(store.load().count, 0)
+    }
+
+    func testDeliveryStoreLoadReturnsEmptyWhenFileCorrupt() throws {
+        let url = tempDeliveryFileURL()
+        try Data("not json".utf8).write(to: url)
+        let store = WebhookDeliveryStore(fileURL: url)
+        XCTAssertEqual(store.load().count, 0, "Corrupt file must produce empty log, not crash")
+    }
+
+    func testDeliveryStoreAppendAndLoadRoundTrip() {
+        let url = tempDeliveryFileURL()
+        let store = WebhookDeliveryStore(fileURL: url)
+        let rec = sampleRecord(url: "https://example.com/a", statusCode: 200)
+
+        store.append(rec)
+
+        let reloaded = WebhookDeliveryStore(fileURL: url).load()
+        XCTAssertEqual(reloaded.count, 1)
+        XCTAssertEqual(reloaded.first?.deliveryId, rec.deliveryId)
+        XCTAssertEqual(reloaded.first?.webhookURL, rec.webhookURL)
+        XCTAssertEqual(reloaded.first?.statusCode, 200)
+    }
+
+    func testDeliveryStoreNewestFirst() {
+        let url = tempDeliveryFileURL()
+        let store = WebhookDeliveryStore(fileURL: url)
+        let older = sampleRecord(deliveryId: "old", date: Date(timeIntervalSince1970: 1_000))
+        let newer = sampleRecord(deliveryId: "new", date: Date(timeIntervalSince1970: 2_000))
+
+        store.append(older)
+        store.append(newer)
+
+        let loaded = store.load()
+        XCTAssertEqual(loaded.map(\.deliveryId), ["new", "old"], "Records must be stored newest-first")
+    }
+
+    func testDeliveryStoreEnforcesCap() {
+        let url = tempDeliveryFileURL()
+        let store = WebhookDeliveryStore(fileURL: url, maxRecords: 3)
+        for i in 0..<5 {
+            store.append(sampleRecord(deliveryId: "\(i)",
+                                      date: Date(timeIntervalSince1970: Double(i))))
+        }
+        let loaded = store.load()
+        XCTAssertEqual(loaded.count, 3)
+        XCTAssertEqual(loaded.map(\.deliveryId), ["4", "3", "2"], "Oldest records must be evicted")
+    }
+
+    func testDeliveryStorePersistsErrorRecords() {
+        let url = tempDeliveryFileURL()
+        let store = WebhookDeliveryStore(fileURL: url)
+        store.append(sampleRecord(statusCode: nil, error: "timeout"))
+
+        let loaded = store.load()
+        XCTAssertEqual(loaded.first?.statusCode, nil)
+        XCTAssertEqual(loaded.first?.errorDescription, "timeout")
+    }
+
+    // MARK: - Endpoint search
+
+    func testEndpointSearchEmptyQueryReturnsAllIndices() {
+        let hooks: [[String: Any]] = [
+            ["url": "https://a.example.com/hook"],
+            ["url": "https://b.example.com/hook"],
+        ]
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "", in: hooks), [0, 1])
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "   ", in: hooks), [0, 1],
+                       "Whitespace-only query must behave as empty")
+    }
+
+    func testEndpointSearchSubstringMatchIsCaseInsensitive() {
+        let hooks: [[String: Any]] = [
+            ["url": "https://Alpha.example.com/hook"],
+            ["url": "https://beta.example.com/hook"],
+            ["url": "https://gamma.example.com/hook"],
+        ]
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "BETA", in: hooks), [1])
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "alpha", in: hooks), [0])
+    }
+
+    func testEndpointSearchMatchesPartialURL() {
+        let hooks: [[String: Any]] = [
+            ["url": "https://hooks.slack.com/services/T000/B000/abc"],
+            ["url": "https://discord.com/api/webhooks/123/xyz"],
+        ]
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "slack", in: hooks), [0])
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "/webhooks/", in: hooks), [1])
+    }
+
+    func testEndpointSearchNoMatchReturnsEmpty() {
+        let hooks: [[String: Any]] = [["url": "https://example.com/hook"]]
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "nope", in: hooks), [])
+    }
+
+    func testEndpointSearchPreservesOrder() {
+        let hooks: [[String: Any]] = [
+            ["url": "https://a.example.com/hook"],
+            ["url": "https://z.example.com/hook"],
+            ["url": "https://a-test.example.com/hook"],
+        ]
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "example", in: hooks), [0, 1, 2],
+                       "Order of input must be preserved")
+    }
+
+    func testEndpointSearchHandlesMissingURLField() {
+        let hooks: [[String: Any]] = [
+            ["url": "https://valid.example.com/hook"],
+            ["enabled": true], // no url field
+        ]
+        XCTAssertEqual(WebhookEndpointSearch.indices(matching: "valid", in: hooks), [0],
+                       "Webhook dicts missing a url field must not crash and must not match")
+    }
+
+    // MARK: - WebHookManager integration with persistence
+
+    func testWebHookManagerLoadsExistingDeliveriesOnInit() {
+        let fileURL = tempDeliveryFileURL()
+        let preloadStore = WebhookDeliveryStore(fileURL: fileURL)
+        preloadStore.append(sampleRecord(url: "https://example.com/preloaded",
+                                         deliveryId: "preloaded"))
+
+        let webhook = RichWebhook(url: WEBHOOK_URL)
+        let wm = WebHookManager(webhooks: [webhook], session: config,
+                                sender: sender, keychain: keychain,
+                                deliveryStore: WebhookDeliveryStore(fileURL: fileURL))
+        XCTAssertEqual(wm.deliveryLog.count, 1)
+        XCTAssertEqual(wm.deliveryLog.first?.deliveryId, "preloaded")
+    }
+
+    // MARK: - Delivery filter
+
+    func testFilterAllReturnsEverything() {
+        let records = [
+            sampleRecord(deliveryId: "a", statusCode: 200),
+            sampleRecord(deliveryId: "b", statusCode: 500),
+            sampleRecord(deliveryId: "c", statusCode: nil, error: "timeout"),
+        ]
+        XCTAssertEqual(WebhookDeliveryFilter.apply(records, mode: .all).map(\.deliveryId),
+                       ["a", "b", "c"])
+    }
+
+    func testFilterFailuresOnlyDropsSuccess() {
+        let records = [
+            sampleRecord(deliveryId: "ok", statusCode: 200),
+            sampleRecord(deliveryId: "fail", statusCode: 500),
+        ]
+        let filtered = WebhookDeliveryFilter.apply(records, mode: .failuresOnly)
+        XCTAssertEqual(filtered.map(\.deliveryId), ["fail"])
+    }
+
+    func testFilterFailuresOnlyKeepsNetworkErrors() {
+        let records = [
+            sampleRecord(deliveryId: "neterr", statusCode: nil, error: "timeout"),
+        ]
+        let filtered = WebhookDeliveryFilter.apply(records, mode: .failuresOnly)
+        XCTAssertEqual(filtered.map(\.deliveryId), ["neterr"],
+                       "Network errors (statusCode == nil) must count as failures")
+    }
+
+    func testFilterFailuresOnlyKeeps4xxAnd5xx() {
+        let records = [
+            sampleRecord(deliveryId: "200", statusCode: 200),
+            sampleRecord(deliveryId: "299", statusCode: 299),
+            sampleRecord(deliveryId: "400", statusCode: 400),
+            sampleRecord(deliveryId: "404", statusCode: 404),
+            sampleRecord(deliveryId: "500", statusCode: 500),
+            sampleRecord(deliveryId: "503", statusCode: 503),
+        ]
+        let filtered = WebhookDeliveryFilter.apply(records, mode: .failuresOnly)
+        XCTAssertEqual(filtered.map(\.deliveryId), ["400", "404", "500", "503"])
+    }
+
+    func testFilterPreservesOrder() {
+        let records = [
+            sampleRecord(deliveryId: "first-fail", statusCode: 500,
+                         date: Date(timeIntervalSince1970: 3)),
+            sampleRecord(deliveryId: "ok",         statusCode: 200,
+                         date: Date(timeIntervalSince1970: 2)),
+            sampleRecord(deliveryId: "second-fail", statusCode: 500,
+                         date: Date(timeIntervalSince1970: 1)),
+        ]
+        let filtered = WebhookDeliveryFilter.apply(records, mode: .failuresOnly)
+        XCTAssertEqual(filtered.map(\.deliveryId), ["first-fail", "second-fail"],
+                       "Filter must preserve input order (newest-first contract)")
+    }
+
+    func testWebHookManagerPersistsDelivery() {
+        let fileURL = tempDeliveryFileURL()
+        let url = URL(string: WEBHOOK_URL)
+        URLProtocolMock.testURLs = [url: Data()]
+        URLProtocolMock.responseStatusCode = 200
+
+        let webhook = RichWebhook(url: WEBHOOK_URL)
+        let wm = WebHookManager(webhooks: [webhook], session: config,
+                                sender: sender, keychain: keychain,
+                                deliveryStore: WebhookDeliveryStore(fileURL: fileURL))
+
+        let exp = expectation(forNotification: .webhookDelivered, object: wm)
+        wm.didProcess(message: SAMPLE_MESSAGE)
+        wait(for: [exp], timeout: 5)
+
+        let reloaded = WebhookDeliveryStore(fileURL: fileURL).load()
+        XCTAssertEqual(reloaded.count, 1, "Delivery must be persisted to disk")
+        XCTAssertEqual(reloaded.first?.webhookURL, WEBHOOK_URL)
+        XCTAssertEqual(reloaded.first?.statusCode, 200)
+    }
 }

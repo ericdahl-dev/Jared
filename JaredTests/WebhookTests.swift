@@ -96,3 +96,62 @@ class WebhookTests: XCTestCase {
                        "Global webhook should fire even when first webhook has routes (break→continue regression)")
     }
 }
+
+// MARK: - WebhookURLValidator
+
+class WebhookURLValidatorTests: XCTestCase {
+    func testEmptyStringIsEmptyError() {
+        XCTAssertEqual(WebhookURLValidator.validate(""), .failure(.empty))
+        XCTAssertEqual(WebhookURLValidator.validate("   "), .failure(.empty),
+                       "Whitespace-only input must be treated as empty")
+    }
+
+    func testHttpURLIsValid() {
+        guard case .success(let url) = WebhookURLValidator.validate("http://example.com/hook") else {
+            return XCTFail("http URL should validate")
+        }
+        XCTAssertEqual(url.scheme, "http")
+        XCTAssertEqual(url.host, "example.com")
+    }
+
+    func testHttpsURLIsValid() {
+        guard case .success(let url) = WebhookURLValidator.validate("https://example.com/hook") else {
+            return XCTFail("https URL should validate")
+        }
+        XCTAssertEqual(url.scheme, "https")
+    }
+
+    func testValidatorTrimsWhitespace() {
+        guard case .success(let url) = WebhookURLValidator.validate("  https://example.com/hook  \n") else {
+            return XCTFail("trimmed URL should validate")
+        }
+        XCTAssertEqual(url.absoluteString, "https://example.com/hook")
+    }
+
+    func testMissingSchemeIsError() {
+        XCTAssertEqual(WebhookURLValidator.validate("example.com/hook"), .failure(.missingScheme),
+                       "Bare host without scheme must be rejected")
+    }
+
+    func testUnsupportedSchemeIsError() {
+        switch WebhookURLValidator.validate("ftp://example.com/hook") {
+        case .failure(.unsupportedScheme(let scheme)):
+            XCTAssertEqual(scheme, "ftp")
+        default:
+            XCTFail("ftp scheme must be rejected as unsupported")
+        }
+    }
+
+    func testMissingHostIsError() {
+        XCTAssertEqual(WebhookURLValidator.validate("https://"), .failure(.missingHost))
+    }
+
+    func testJavaScriptSchemeIsRejected() {
+        switch WebhookURLValidator.validate("javascript:alert(1)") {
+        case .failure(.unsupportedScheme(let scheme)):
+            XCTAssertEqual(scheme, "javascript")
+        default:
+            XCTFail("javascript: must never be accepted as a webhook URL")
+        }
+    }
+}

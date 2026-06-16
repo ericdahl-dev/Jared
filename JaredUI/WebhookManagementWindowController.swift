@@ -101,7 +101,8 @@ private class DeliveryCellView: NSTableCellView {
 
 class WebhookManagementWindowController: NSWindowController,
                                           NSTableViewDelegate,
-                                          NSTableViewDataSource {
+                                          NSTableViewDataSource,
+                                          NSTextFieldDelegate {
 
     // Left panel
     private var endpointTable:  NSTableView!
@@ -109,6 +110,7 @@ class WebhookManagementWindowController: NSWindowController,
     // Right panel
     private var detailBox:      NSView!
     private var urlField:       NSTextField!
+    private var urlValidationLabel: NSTextField!
     private var enabledCheck:   NSButton!
     private var routesLabel:    NSTextField!
     private var deliveryStatus: NSTextField!
@@ -119,11 +121,21 @@ class WebhookManagementWindowController: NSWindowController,
     private var rotateSecretBtn:   NSButton!
     private var historyTable:   NSTableView!
     private var historyStatus:  NSTextField!
+    private var historyFilterSeg: NSSegmentedControl!
     private var emptyDetail:    NSTextField!
 
+    private var historyFilterMode: WebhookDeliveryFilter.Mode = .all
+
     private var webhooks: [[String: Any]] = []
+    private let deliveryStore = WebHookManager.defaultDeliveryStore()
     private var deliveryLog: [WebhookDeliveryRecord] = []
 
+    private var endpointSearchField: NSSearchField!
+    private var visibleEndpointIndices: [Int] = []
+
+    /// Index into `webhooks` (the unfiltered array) of the currently selected
+    /// endpoint, or -1 for none. UI rows are translated through
+    /// `visibleEndpointIndices` for filtered tables.
     private var selectedRow: Int = -1 {
         didSet { updateDetail() }
     }
@@ -145,6 +157,7 @@ class WebhookManagementWindowController: NSWindowController,
         self.init(window: window)
         setupUI()
         loadWebhooks()
+        deliveryLog = deliveryStore.load()
         NotificationCenter.default.addObserver(self, selector: #selector(deliveryRecorded(_:)),
                                                name: .webhookDelivered, object: nil)
     }
@@ -181,6 +194,15 @@ class WebhookManagementWindowController: NSWindowController,
         btnStack.orientation = .horizontal
         btnStack.spacing = 8
 
+        endpointSearchField = NSSearchField()
+        endpointSearchField.placeholderString = "Search endpoints"
+        endpointSearchField.target = self
+        endpointSearchField.action = #selector(endpointSearchChanged(_:))
+        endpointSearchField.sendsSearchStringImmediately = false
+        endpointSearchField.sendsWholeSearchString = false
+        endpointSearchField.controlSize = .small
+        endpointSearchField.font = .systemFont(ofSize: 11)
+
         let leftScrollView = NSScrollView()
         leftScrollView.borderType = .noBorder
         leftScrollView.hasVerticalScroller = true
@@ -195,12 +217,17 @@ class WebhookManagementWindowController: NSWindowController,
         endpointTable.selectionHighlightStyle = .regular
         endpointTable.delegate = self
         endpointTable.dataSource = self
+        let endpointMenu = NSMenu()
+        endpointMenu.addItem(withTitle: "Copy URL",
+                             action: #selector(copyEndpointURL(_:)),
+                             keyEquivalent: "")
+        endpointTable.menu = endpointMenu
         let epCol = NSTableColumn(identifier: .init("endpoint"))
         epCol.resizingMask = .autoresizingMask
         endpointTable.addTableColumn(epCol)
         leftScrollView.documentView = endpointTable
 
-        for v in [leftTitle, leftSub, btnStack, leftScrollView] as [NSView] {
+        for v in [leftTitle, leftSub, btnStack, endpointSearchField!, leftScrollView] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false
             leftPanel.addSubview(v)
         }
@@ -216,7 +243,11 @@ class WebhookManagementWindowController: NSWindowController,
             btnStack.topAnchor.constraint(equalTo: leftSub.bottomAnchor, constant: 10),
             btnStack.leadingAnchor.constraint(equalTo: leftTitle.leadingAnchor),
 
-            leftScrollView.topAnchor.constraint(equalTo: btnStack.bottomAnchor, constant: 8),
+            endpointSearchField.topAnchor.constraint(equalTo: btnStack.bottomAnchor, constant: 8),
+            endpointSearchField.leadingAnchor.constraint(equalTo: leftTitle.leadingAnchor),
+            endpointSearchField.trailingAnchor.constraint(equalTo: leftPanel.trailingAnchor, constant: -8),
+
+            leftScrollView.topAnchor.constraint(equalTo: endpointSearchField.bottomAnchor, constant: 6),
             leftScrollView.leadingAnchor.constraint(equalTo: leftPanel.leadingAnchor),
             leftScrollView.trailingAnchor.constraint(equalTo: leftPanel.trailingAnchor),
             leftScrollView.bottomAnchor.constraint(equalTo: leftPanel.bottomAnchor),
@@ -315,6 +346,12 @@ class WebhookManagementWindowController: NSWindowController,
         urlField.usesSingleLineMode = false
         urlField.cell?.wraps = true
         urlField.cell?.isScrollable = false
+        urlField.delegate = self
+
+        urlValidationLabel = bodyLabel("")
+        urlValidationLabel.font = .systemFont(ofSize: 11)
+        urlValidationLabel.textColor = .systemRed
+        urlValidationLabel.isHidden = true
 
         enabledCheck = NSButton(checkboxWithTitle: "Enabled", target: nil, action: nil)
 
@@ -326,7 +363,7 @@ class WebhookManagementWindowController: NSWindowController,
         enableRow.orientation = .horizontal
         enableRow.spacing = 10
 
-        deliveryStatus = bodyLabel("No deliveries recorded for this session")
+        deliveryStatus = bodyLabel("No deliveries recorded yet")
         deliveryStatus.textColor = .secondaryLabelColor
         deliveryStatus.font = .systemFont(ofSize: 12)
 
@@ -359,10 +396,18 @@ class WebhookManagementWindowController: NSWindowController,
         let sep = NSBox(); sep.boxType = .separator
 
         let historyTitle = sectionTitle("Delivery History")
-        let historySub   = bodyLabel("History reflects recent deliveries from the current app session.")
+        let historySub   = bodyLabel("History reflects the most recent persisted deliveries (newest first).")
         historySub.textColor = .secondaryLabelColor
         historySub.lineBreakMode = .byWordWrapping
         historySub.maximumNumberOfLines = 2
+
+        historyFilterSeg = NSSegmentedControl(labels: ["All", "Failures only"],
+                                              trackingMode: .selectOne,
+                                              target: self,
+                                              action: #selector(historyFilterChanged(_:)))
+        historyFilterSeg.selectedSegment = 0
+        historyFilterSeg.font = .systemFont(ofSize: 11)
+        historyFilterSeg.controlSize = .small
 
         let histScrollView = NSScrollView()
         histScrollView.borderType = .noBorder
@@ -378,18 +423,26 @@ class WebhookManagementWindowController: NSWindowController,
         historyTable.selectionHighlightStyle = .none
         historyTable.delegate = self
         historyTable.dataSource = self
+        let historyMenu = NSMenu()
+        historyMenu.addItem(withTitle: "Copy Delivery ID",
+                            action: #selector(copyDeliveryId(_:)),
+                            keyEquivalent: "")
+        historyMenu.addItem(withTitle: "Copy Webhook URL",
+                            action: #selector(copyDeliveryWebhookURL(_:)),
+                            keyEquivalent: "")
+        historyTable.menu = historyMenu
         let hCol = NSTableColumn(identifier: .init("history"))
         hCol.resizingMask = .autoresizingMask
         historyTable.addTableColumn(hCol)
         histScrollView.documentView = historyTable
 
-        historyStatus = bodyLabel("No deliveries recorded for this session")
+        historyStatus = bodyLabel("No deliveries recorded yet")
         historyStatus.textColor = .tertiaryLabelColor
         historyStatus.alignment = .center
         historyStatus.font = .systemFont(ofSize: 12)
 
-        for v in [selectedTitle, urlLabel, urlField!, enableRow, deliveryStatus,
-                  buttonRow, sep, historyTitle, historySub,
+        for v in [selectedTitle, urlLabel, urlField!, urlValidationLabel!, enableRow, deliveryStatus,
+                  buttonRow, sep, historyTitle, historySub, historyFilterSeg!,
                   histScrollView, historyStatus] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false
             box.addSubview(v)
@@ -408,7 +461,11 @@ class WebhookManagementWindowController: NSWindowController,
             urlField.trailingAnchor.constraint(equalTo: selectedTitle.trailingAnchor),
             urlField.heightAnchor.constraint(greaterThanOrEqualToConstant: 42),
 
-            enableRow.topAnchor.constraint(equalTo: urlField.bottomAnchor, constant: 10),
+            urlValidationLabel.topAnchor.constraint(equalTo: urlField.bottomAnchor, constant: 4),
+            urlValidationLabel.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
+            urlValidationLabel.trailingAnchor.constraint(equalTo: selectedTitle.trailingAnchor),
+
+            enableRow.topAnchor.constraint(equalTo: urlValidationLabel.bottomAnchor, constant: 6),
             enableRow.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
 
             deliveryStatus.topAnchor.constraint(equalTo: enableRow.bottomAnchor, constant: 6),
@@ -429,7 +486,10 @@ class WebhookManagementWindowController: NSWindowController,
             historySub.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
             historySub.trailingAnchor.constraint(equalTo: selectedTitle.trailingAnchor),
 
-            histScrollView.topAnchor.constraint(equalTo: historySub.bottomAnchor, constant: 8),
+            historyFilterSeg.topAnchor.constraint(equalTo: historySub.bottomAnchor, constant: 8),
+            historyFilterSeg.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
+
+            histScrollView.topAnchor.constraint(equalTo: historyFilterSeg.bottomAnchor, constant: 8),
             histScrollView.leadingAnchor.constraint(equalTo: box.leadingAnchor),
             histScrollView.trailingAnchor.constraint(equalTo: box.trailingAnchor),
             histScrollView.bottomAnchor.constraint(equalTo: box.bottomAnchor),
@@ -482,9 +542,25 @@ class WebhookManagementWindowController: NSWindowController,
     }
 
     private func reloadList() {
+        refreshVisibleEndpointIndices()
         endpointTable.reloadData()
         if selectedRow >= webhooks.count { selectedRow = -1 }
+        // Re-sync table selection to the actual selectedRow after filtering
+        if let visible = visibleEndpointIndices.firstIndex(of: selectedRow) {
+            endpointTable.selectRowIndexes(IndexSet(integer: visible), byExtendingSelection: false)
+        } else if endpointTable.selectedRow >= 0 {
+            endpointTable.deselectAll(nil)
+        }
         updateDetail()
+    }
+
+    private func refreshVisibleEndpointIndices() {
+        let query = endpointSearchField?.stringValue ?? ""
+        visibleEndpointIndices = WebhookEndpointSearch.indices(matching: query, in: webhooks)
+    }
+
+    @objc private func endpointSearchChanged(_ sender: NSSearchField) {
+        reloadList()
     }
 
     private func updateDetail() {
@@ -504,16 +580,25 @@ class WebhookManagementWindowController: NSWindowController,
 
         refreshDeliveryStatus()
         historyTable.reloadData()
-        let url = hook["url"] as? String ?? ""
-        let forThisHook = deliveryLog.filter { $0.webhookURL == url }
-        historyStatus.isHidden = !forThisHook.isEmpty
+        refreshHistoryEmptyState()
+        revalidateURLField(allowEmpty: false)
+    }
+
+    private func refreshHistoryEmptyState() {
+        let visible = visibleDeliveryRecords()
+        historyStatus.isHidden = !visible.isEmpty
+        if visible.isEmpty {
+            historyStatus.stringValue = historyFilterMode == .failuresOnly
+                ? "No failed deliveries to show"
+                : "No deliveries recorded yet"
+        }
     }
 
     private func refreshDeliveryStatus() {
         guard selectedRow >= 0, selectedRow < webhooks.count,
               let url = webhooks[selectedRow]["url"] as? String,
               let last = deliveryLog.first(where: { $0.webhookURL == url }) else {
-            deliveryStatus.stringValue = "No deliveries recorded for this session"
+            deliveryStatus.stringValue = "No deliveries recorded yet"
             deliveryStatus.textColor   = .secondaryLabelColor
             return
         }
@@ -529,11 +614,16 @@ class WebhookManagementWindowController: NSWindowController,
 
     // MARK: - Table delegate / data source
 
-    func numberOfRows(in tableView: NSTableView) -> Int {
-        if tableView === endpointTable { return webhooks.count }
+    private func visibleDeliveryRecords() -> [WebhookDeliveryRecord] {
         guard selectedRow >= 0, selectedRow < webhooks.count,
-              let url = webhooks[selectedRow]["url"] as? String else { return 0 }
-        return deliveryLog.filter { $0.webhookURL == url }.count
+              let url = webhooks[selectedRow]["url"] as? String else { return [] }
+        let forHook = deliveryLog.filter { $0.webhookURL == url }
+        return WebhookDeliveryFilter.apply(forHook, mode: historyFilterMode)
+    }
+
+    func numberOfRows(in tableView: NSTableView) -> Int {
+        if tableView === endpointTable { return visibleEndpointIndices.count }
+        return visibleDeliveryRecords().count
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
@@ -542,36 +632,47 @@ class WebhookManagementWindowController: NSWindowController,
             let cell = (tableView.makeView(withIdentifier: id, owner: nil) as? EndpointCellView)
                         ?? EndpointCellView(frame: .zero)
             cell.identifier = id
-            cell.configure(with: webhooks[row])
+            guard row < visibleEndpointIndices.count else { return cell }
+            cell.configure(with: webhooks[visibleEndpointIndices[row]])
             return cell
         } else {
             let id   = NSUserInterfaceItemIdentifier("del")
             let cell = (tableView.makeView(withIdentifier: id, owner: nil) as? DeliveryCellView)
                         ?? DeliveryCellView(frame: .zero)
             cell.identifier = id
-            guard selectedRow >= 0, selectedRow < webhooks.count,
-                  let url = webhooks[selectedRow]["url"] as? String else { return nil }
-            let records = deliveryLog.filter { $0.webhookURL == url }
+            let records = visibleDeliveryRecords()
             if row < records.count { cell.configure(with: records[row]) }
             return cell
         }
     }
 
+    @objc private func historyFilterChanged(_ sender: NSSegmentedControl) {
+        historyFilterMode = sender.selectedSegment == 1 ? .failuresOnly : .all
+        historyTable.reloadData()
+        refreshHistoryEmptyState()
+    }
+
     func tableViewSelectionDidChange(_ notification: Notification) {
         guard let tv = notification.object as? NSTableView, tv === endpointTable else { return }
-        selectedRow = endpointTable.selectedRow
+        let visibleRow = endpointTable.selectedRow
+        if visibleRow >= 0 && visibleRow < visibleEndpointIndices.count {
+            selectedRow = visibleEndpointIndices[visibleRow]
+        } else {
+            selectedRow = -1
+        }
     }
 
     // MARK: - Notification
 
     @objc private func deliveryRecorded(_ note: Notification) {
         guard let url = note.userInfo?["url"] as? String else { return }
+        deliveryLog = deliveryStore.load()
         // Refresh if currently viewing this URL or showing history
         if selectedRow >= 0, selectedRow < webhooks.count,
            webhooks[selectedRow]["url"] as? String == url {
             refreshDeliveryStatus()
             historyTable.reloadData()
-            historyStatus.isHidden = true
+            refreshHistoryEmptyState()
         }
     }
 
@@ -579,13 +680,53 @@ class WebhookManagementWindowController: NSWindowController,
 
     @objc private func saveChanges() {
         guard selectedRow >= 0, selectedRow < webhooks.count else { return }
-        let url = urlField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !url.isEmpty else { return }
-        webhooks[selectedRow]["url"]     = url
-        webhooks[selectedRow]["enabled"] = enabledCheck.state == .on
-        reloadList()
-        endpointTable.selectRowIndexes(IndexSet(integer: selectedRow), byExtendingSelection: false)
-        save()
+        switch WebhookURLValidator.validate(urlField.stringValue) {
+        case .failure(let err):
+            showURLValidation(err)
+            urlField.window?.makeFirstResponder(urlField)
+            NSSound.beep()
+            return
+        case .success(let url):
+            hideURLValidation()
+            webhooks[selectedRow]["url"]     = url.absoluteString
+            webhooks[selectedRow]["enabled"] = enabledCheck.state == .on
+            reloadList()
+            save()
+        }
+    }
+
+    // MARK: - URL validation feedback
+
+    func controlTextDidChange(_ obj: Notification) {
+        guard let field = obj.object as? NSTextField, field === urlField else { return }
+        revalidateURLField(allowEmpty: true)
+    }
+
+    private func revalidateURLField(allowEmpty: Bool) {
+        let trimmed = urlField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty && allowEmpty {
+            hideURLValidation()
+            saveBtn?.isEnabled = false
+            return
+        }
+        switch WebhookURLValidator.validate(urlField.stringValue) {
+        case .failure(let err):
+            showURLValidation(err)
+            saveBtn?.isEnabled = false
+        case .success:
+            hideURLValidation()
+            saveBtn?.isEnabled = true
+        }
+    }
+
+    private func showURLValidation(_ error: WebhookURLError) {
+        urlValidationLabel?.stringValue = error.message
+        urlValidationLabel?.isHidden = false
+    }
+
+    private func hideURLValidation() {
+        urlValidationLabel?.isHidden = true
+        urlValidationLabel?.stringValue = ""
     }
 
     @objc private func deleteSelected() {
@@ -707,21 +848,65 @@ class WebhookManagementWindowController: NSWindowController,
 
         guard let window else { return }
         alert.beginSheetModal(for: window) { [weak self] response in
-            guard response == .alertFirstButtonReturn else { return }
-            let url = urlField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !url.isEmpty, let self else { return }
-            let mode = modeBtn.selectedItem?.title ?? "notify"
-            self.webhooks.append(["url": url, "mode": mode, "enabled": true])
-            self.reloadList()
-            self.save()
-            let last = self.webhooks.count - 1
-            self.endpointTable.selectRowIndexes(IndexSet(integer: last), byExtendingSelection: false)
-            self.endpointTable.scrollRowToVisible(last)
-            self.selectedRow = last
+            guard response == .alertFirstButtonReturn, let self else { return }
+            switch WebhookURLValidator.validate(urlField.stringValue) {
+            case .failure(let err):
+                let invalid = NSAlert()
+                invalid.messageText  = "Invalid webhook URL"
+                invalid.informativeText = err.message
+                invalid.alertStyle = .warning
+                invalid.addButton(withTitle: "OK")
+                invalid.beginSheetModal(for: window) { _ in
+                    // Re-open the add dialog so the user can correct the input
+                    self.addWebhook()
+                }
+            case .success(let url):
+                let mode = modeBtn.selectedItem?.title ?? "notify"
+                self.webhooks.append(["url": url.absoluteString, "mode": mode, "enabled": true])
+                // Clear any active search so the newly-added webhook is visible
+                self.endpointSearchField?.stringValue = ""
+                let last = self.webhooks.count - 1
+                self.selectedRow = last
+                self.reloadList()
+                self.save()
+                if let visible = self.visibleEndpointIndices.firstIndex(of: last) {
+                    self.endpointTable.scrollRowToVisible(visible)
+                }
+            }
         }
     }
 
     @objc private func refresh(_ sender: Any) { loadWebhooks() }
 
     @objc private func closeWindow() { window?.close() }
+
+    // MARK: - Copy actions
+
+    @objc private func copyEndpointURL(_ sender: Any) {
+        let visibleRow = endpointTable.clickedRow
+        guard visibleRow >= 0, visibleRow < visibleEndpointIndices.count else { return }
+        let idx = visibleEndpointIndices[visibleRow]
+        guard let url = webhooks[idx]["url"] as? String else { return }
+        writeToPasteboard(url)
+    }
+
+    @objc private func copyDeliveryId(_ sender: Any) {
+        let row = historyTable.clickedRow
+        let records = visibleDeliveryRecords()
+        guard row >= 0, row < records.count else { return }
+        writeToPasteboard(records[row].deliveryId)
+    }
+
+    @objc private func copyDeliveryWebhookURL(_ sender: Any) {
+        let row = historyTable.clickedRow
+        let records = visibleDeliveryRecords()
+        guard row >= 0, row < records.count else { return }
+        writeToPasteboard(records[row].webhookURL)
+    }
+
+    private func writeToPasteboard(_ string: String) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(string, forType: .string)
+    }
 }
