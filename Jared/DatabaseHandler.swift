@@ -105,7 +105,28 @@ class DatabaseHandler {
         let stream = AsyncStream<Void> { cont = $0 }
         walContinuation = cont
         backgroundTask = Task.detached(priority: .background) { [weak self] in
-            await self?.backgroundAction(walStream: stream)
+            var walIterator = stream.makeAsyncIterator()
+            while !Task.isCancelled {
+                let timeoutNs: UInt64
+                if let self {
+                    _ = self.queryNewRecords()
+                    timeoutNs = UInt64(self.refreshSeconds * 1_000_000_000)
+                } else {
+                    break
+                }
+
+                // Wait for WAL change OR timeout, whichever comes first.
+                await withTaskGroup(of: Void.self) { group in
+                    group.addTask {
+                        try? await Task.sleep(nanoseconds: timeoutNs)
+                    }
+                    group.addTask {
+                        _ = await walIterator.next()
+                    }
+                    await group.next()
+                    group.cancelAll()
+                }
+            }
         }
     }
 
@@ -138,25 +159,6 @@ class DatabaseHandler {
         walSource = source
     }
 
-    private func backgroundAction(walStream: AsyncStream<Void>) async {
-        var walIterator = walStream.makeAsyncIterator()
-        while !Task.isCancelled {
-            _ = queryNewRecords()
-            // Wait for WAL change OR timeout, whichever comes first
-            let timeoutNs = UInt64(refreshSeconds * 1_000_000_000)
-            await withTaskGroup(of: Void.self) { group in
-                group.addTask {
-                    try? await Task.sleep(nanoseconds: timeoutNs)
-                }
-                group.addTask {
-                    _ = await walIterator.next()
-                }
-                await group.next()
-                group.cancelAll()
-            }
-        }
-    }
-    
     private func getCurrentMaxRecordID() -> String {
         var id: String?
         var statement: OpaquePointer?
@@ -188,6 +190,7 @@ class DatabaseHandler {
         }
         
         var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
         
         if sqlite3_prepare_v2(db, DatabaseHandler.groupQuery, -1, &statement, nil) != SQLITE_OK {
             let errmsg = String(cString: sqlite3_errmsg(db)!)
@@ -232,13 +235,11 @@ class DatabaseHandler {
     private func extractAttributedBodyText(for sqlStatement: OpaquePointer?, at column: Int32) -> String? {
         let byteCount = sqlite3_column_bytes(sqlStatement, column)
         guard byteCount > 0, let bytes = sqlite3_column_blob(sqlStatement, column) else {
-            NSLog("extractAttributedBodyText: no blob at col %d", column)
             return nil
         }
         let data = Data(bytes: bytes, count: Int(byteCount))
         let obj: Any? = NSUnarchiver.unarchiveObject(with: data)
             ?? (try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSAttributedString.self, from: data))
-        NSLog("extractAttributedBodyText: byteCount=%d obj=%@", byteCount, obj != nil ? "non-nil" : "nil")
         guard let attributed = obj as? NSAttributedString else { return nil }
         let text = attributed.string
         return text.isEmpty ? nil : text
@@ -297,7 +298,6 @@ class DatabaseHandler {
         while sqlite3_step(statement) == SQLITE_ROW {
             var senderHandleOptional = unwrapStringColumn(for: statement, at: 0)
             let rawText = unwrapStringColumn(for: statement, at: 1)
-            NSLog("rawText=%@ isEmpty=%d", rawText ?? "nil", rawText?.isEmpty ?? true ? 1 : 0)
             let textOptional = (rawText?.isEmpty == false ? rawText : nil) ?? extractAttributedBodyText(for: statement, at: 13)
             let rowID = unwrapStringColumn(for: statement, at: 2)
             let roomName = unwrapStringColumn(for: statement, at: 3)
@@ -310,7 +310,6 @@ class DatabaseHandler {
             let associatedMessageGUID = unwrapStringColumn(for: statement, at: 10)
             let guid = unwrapStringColumn(for: statement, at: 11)
             let destinationCallerId = unwrapStringColumn(for: statement, at: 12)
-            NSLog("Processing rowID=%@", rowID ?? "nil")
             
             querySinceID = rowID;
 
@@ -322,7 +321,6 @@ class DatabaseHandler {
             }
             
             guard let senderHandle = senderHandleOptional, let text = textOptional, let destination = destinationOptional else {
-                NSLog("guard failed: sender=%@ text=%@ dest=%@", senderHandleOptional ?? "nil", textOptional ?? "nil", destinationOptional ?? "nil")
                 continue
             }
             
@@ -345,7 +343,6 @@ class DatabaseHandler {
             let message = Message(body: TextBody(text), date: Date(timeIntervalSince1970: epochDate), sender: sender, recipient: recipient, guid: guid, attachments: hasAttachment ? retrieveAttachments(forMessage: rowID ?? "") : [],
                 sendStyle: sendStyle, associatedMessageType: Int(associatedMessageType), associatedMessageGUID: associatedMessageGUID)
             
-            NSLog("routing text=%@ sender=%@", text, cleanSenderHandle)
             router?.route(message: message)
         }
         
