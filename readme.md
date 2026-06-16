@@ -33,7 +33,7 @@ For the full setup guide including HMAC signing, Docker networking, and troubles
 ## Installation  
 ![Jared Main Window](/Documentation/Screenshots/MainWindow.png)
 
-Jared must be run a machine running macOS with an active messages account logged in. It has only been tested on 10.14 Mojave and later. It may work on old versions of macOS but this is not guaranteed as there may have been changes to the message database's schema. If you don't want Jared posting as you, it is recommended that you create a new Apple ID and user account on your mac, and run it in the background under that user. That way it's not using your main Apple ID.
+Jared requires **macOS 13 Ventura or later** and an active iMessage account on the Mac. If you don't want Jared posting as you, it is recommended that you create a new Apple ID and user account on your mac, and run it in the background under that user. That way it's not using your main Apple ID.
 
 1. Download Jared.app and move it to the applications folder.  
 
