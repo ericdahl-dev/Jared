@@ -4,6 +4,7 @@
 //
 
 import Cocoa
+import JaredFramework
 
 // MARK: - Endpoint list cell
 
@@ -112,6 +113,9 @@ class WebhookManagementWindowController: NSWindowController,
     private var urlField:       NSTextField!
     private var urlValidationLabel: NSTextField!
     private var enabledCheck:   NSButton!
+    private var signingCheck:   NSButton!
+    private var secretField:    NSSecureTextField!
+    private var signingStatus:  NSTextField!
     private var routesLabel:    NSTextField!
     private var deliveryStatus: NSTextField!
     private var saveBtn:           NSButton!
@@ -142,12 +146,13 @@ class WebhookManagementWindowController: NSWindowController,
 
     private let configURL = ConfigurationHelper.getSupportDirectory()
         .appendingPathComponent("config.json")
+    private let keychain = KeychainStore()
 
     // MARK: Init
 
     convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 780, height: 500),
+            contentRect: NSRect(x: 0, y: 0, width: 780, height: 560),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
@@ -355,6 +360,21 @@ class WebhookManagementWindowController: NSWindowController,
 
         enabledCheck = NSButton(checkboxWithTitle: "Enabled", target: nil, action: nil)
 
+        signingCheck = NSButton(checkboxWithTitle: "Sign requests (HMAC-SHA256)", target: nil, action: nil)
+
+        let secretLabel = bodyLabel("Signing secret")
+        secretLabel.textColor = .secondaryLabelColor
+
+        secretField = NSSecureTextField()
+        secretField.placeholderString = "Enter new secret to set or rotate"
+        secretField.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        secretField.bezelStyle = .roundedBezel
+
+        signingStatus = bodyLabel("Unsigned deliveries")
+        signingStatus.textColor = .secondaryLabelColor
+        signingStatus.lineBreakMode = .byWordWrapping
+        signingStatus.maximumNumberOfLines = 3
+
         routesLabel = bodyLabel("")
         routesLabel.textColor = .secondaryLabelColor
         routesLabel.font = .systemFont(ofSize: 12)
@@ -441,7 +461,8 @@ class WebhookManagementWindowController: NSWindowController,
         historyStatus.alignment = .center
         historyStatus.font = .systemFont(ofSize: 12)
 
-        for v in [selectedTitle, urlLabel, urlField!, urlValidationLabel!, enableRow, deliveryStatus,
+        for v in [selectedTitle, urlLabel, urlField!, urlValidationLabel!, enableRow, secretLabel, secretField!,
+                  signingCheck, signingStatus, deliveryStatus,
                   buttonRow, sep, historyTitle, historySub, historyFilterSeg!,
                   histScrollView, historyStatus] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false
@@ -468,7 +489,21 @@ class WebhookManagementWindowController: NSWindowController,
             enableRow.topAnchor.constraint(equalTo: urlValidationLabel.bottomAnchor, constant: 6),
             enableRow.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
 
-            deliveryStatus.topAnchor.constraint(equalTo: enableRow.bottomAnchor, constant: 6),
+            signingCheck.topAnchor.constraint(equalTo: enableRow.bottomAnchor, constant: 10),
+            signingCheck.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
+
+            secretLabel.topAnchor.constraint(equalTo: signingCheck.bottomAnchor, constant: 10),
+            secretLabel.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
+
+            secretField.topAnchor.constraint(equalTo: secretLabel.bottomAnchor, constant: 4),
+            secretField.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
+            secretField.trailingAnchor.constraint(equalTo: selectedTitle.trailingAnchor),
+
+            signingStatus.topAnchor.constraint(equalTo: secretField.bottomAnchor, constant: 4),
+            signingStatus.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
+            signingStatus.trailingAnchor.constraint(equalTo: selectedTitle.trailingAnchor),
+
+            deliveryStatus.topAnchor.constraint(equalTo: signingStatus.bottomAnchor, constant: 8),
             deliveryStatus.leadingAnchor.constraint(equalTo: selectedTitle.leadingAnchor),
 
             buttonRow.topAnchor.constraint(equalTo: deliveryStatus.bottomAnchor, constant: 14),
@@ -573,10 +608,12 @@ class WebhookManagementWindowController: NSWindowController,
         emptyDetail.isHidden = true
 
         let hook = webhooks[selectedRow]
-        urlField.stringValue    = hook["url"] as? String ?? ""
+        let url = hook["url"] as? String ?? ""
+        urlField.stringValue    = url
         enabledCheck.state      = (hook["enabled"] as? Bool ?? true) ? .on : .off
         let routes = (hook["routes"] as? [[String: Any]])?.count ?? 0
         routesLabel.stringValue = "\(routes) route\(routes == 1 ? "" : "s")"
+        refreshSigningUI(for: hook)
 
         refreshDeliveryStatus()
         historyTable.reloadData()
@@ -592,6 +629,56 @@ class WebhookManagementWindowController: NSWindowController,
                 ? "No failed deliveries to show"
                 : "No deliveries recorded yet"
         }
+    }
+
+    private func refreshSigningUI(for hook: [String: Any]) {
+        let url = hook["url"] as? String ?? ""
+        let hasAuthInConfig = hook["auth"] != nil
+        let hasKeychainSecret = keychain.secret(for: url) != nil
+
+        signingCheck.state = (hasAuthInConfig || hasKeychainSecret) ? .on : .off
+        secretField.stringValue = ""
+
+        if hasKeychainSecret {
+            signingStatus.stringValue = "Secret stored in Keychain. Enter a new value below to rotate."
+            signingStatus.textColor = .secondaryLabelColor
+        } else if hasAuthInConfig {
+            signingStatus.stringValue = "Signing enabled but no Keychain secret — deliveries are unsigned."
+            signingStatus.textColor = .systemOrange
+        } else {
+            signingStatus.stringValue = "Unsigned deliveries."
+            signingStatus.textColor = .secondaryLabelColor
+        }
+    }
+
+    private func applySigningSettings(oldURL: String, newURL: String) -> Bool {
+        if signingCheck.state == .on {
+            let newSecret = secretField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !newSecret.isEmpty {
+                keychain.save(secret: newSecret, for: newURL)
+            } else if keychain.secret(for: newURL) == nil {
+                if oldURL != newURL, let migrated = keychain.secret(for: oldURL) {
+                    keychain.save(secret: migrated, for: newURL)
+                } else {
+                    let alert = NSAlert()
+                    alert.messageText = "Signing secret required"
+                    alert.informativeText = "Enter a new signing secret, or disable signing."
+                    if let window { alert.beginSheetModal(for: window, completionHandler: nil) }
+                    else { alert.runModal() }
+                    return false
+                }
+            }
+            webhooks[selectedRow]["auth"] = [String: Any]()
+        } else {
+            webhooks[selectedRow].removeValue(forKey: "auth")
+            keychain.delete(for: oldURL)
+            if oldURL != newURL { keychain.delete(for: newURL) }
+        }
+
+        if oldURL != newURL, signingCheck.state == .on, keychain.secret(for: oldURL) != nil {
+            keychain.delete(for: oldURL)
+        }
+        return true
     }
 
     private func refreshDeliveryStatus() {
@@ -680,6 +767,7 @@ class WebhookManagementWindowController: NSWindowController,
 
     @objc private func saveChanges() {
         guard selectedRow >= 0, selectedRow < webhooks.count else { return }
+        let oldURL = webhooks[selectedRow]["url"] as? String ?? ""
         switch WebhookURLValidator.validate(urlField.stringValue) {
         case .failure(let err):
             showURLValidation(err)
@@ -688,9 +776,12 @@ class WebhookManagementWindowController: NSWindowController,
             return
         case .success(let url):
             hideURLValidation()
+            guard applySigningSettings(oldURL: oldURL, newURL: url.absoluteString) else { return }
             webhooks[selectedRow]["url"]     = url.absoluteString
             webhooks[selectedRow]["enabled"] = enabledCheck.state == .on
+            secretField.stringValue = ""
             reloadList()
+            endpointTable.selectRowIndexes(IndexSet(integer: selectedRow), byExtendingSelection: false)
             save()
         }
     }
@@ -739,6 +830,9 @@ class WebhookManagementWindowController: NSWindowController,
         alert.buttons[0].hasDestructiveAction = true
         alert.beginSheetModal(for: window) { [weak self] r in
             guard r == .alertFirstButtonReturn, let self else { return }
+            if let url = self.webhooks[self.selectedRow]["url"] as? String {
+                self.keychain.delete(for: url)
+            }
             self.webhooks.remove(at: self.selectedRow)
             self.selectedRow = -1
             self.reloadList()
@@ -755,26 +849,26 @@ class WebhookManagementWindowController: NSWindowController,
 
     @objc private func sendTest() {
         guard selectedRow >= 0, selectedRow < webhooks.count,
-              let urlStr = webhooks[selectedRow]["url"] as? String,
-              let url = URL(string: urlStr) else { return }
+              let hook = WebHookManager.richWebhookForDelivery(from: webhooks[selectedRow], keychain: keychain),
+              let url = URL(string: hook.url),
+              let body = WebHookManager.createTestWebhookBody() else { return }
 
         deliveryStatus.stringValue = "Sending test payload…"
         deliveryStatus.textColor   = .secondaryLabelColor
 
-        let payload: [String: Any] = [
-            "text": "/test",
-            "sender": ["handle": "test@example.com", "name": "Test"],
-            "chat": ["chatIdentifier": "test@example.com", "name": "Test Chat"],
-            "isFromMe": false,
-            "date": ISO8601DateFormatter().string(from: Date()),
-            "_jared_test": true,
-        ]
-        var req = URLRequest(url: url, timeoutInterval: 10)
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+        if let inlineSecret = hook.auth?.secret {
+            keychain.save(secret: inlineSecret, for: hook.url)
+        }
 
-        URLSession.shared.dataTask(with: req) { [weak self] _, response, error in
+        let request = WebHookManager.makeDeliveryRequest(
+            url: url,
+            webhook: hook,
+            body: body,
+            deliveryId: UUID().uuidString,
+            keychain: keychain
+        )
+
+        URLSession.shared.dataTask(with: request) { [weak self] _, response, error in
             DispatchQueue.main.async {
                 guard let self else { return }
                 if let error {

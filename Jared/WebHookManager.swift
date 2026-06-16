@@ -102,24 +102,13 @@ class WebHookManager: MessageDelegate, RoutingModule {
         let maxRetries = webhook.effectiveMaxRetries
 
         for attempt in 0...maxRetries {
-            var request = URLRequest(url: parsedUrl)
-            request.httpMethod = "POST"
-            request.httpBody = webhookBody
-            request.addValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
-            request.addValue(deliveryId, forHTTPHeaderField: "X-Jared-Delivery-Id")
-            request.addValue(webhook.url, forHTTPHeaderField: "X-Jared-Webhook-Id")
-            request.timeoutInterval = webhook.effectiveTimeout
-
-            if webhook.auth != nil {
-                if let secret = keychain.secret(for: webhook.url) {
-                    let key = SymmetricKey(data: Data(secret.utf8))
-                    let sig = HMAC<SHA256>.authenticationCode(for: webhookBody, using: key)
-                    let hexSig = sig.map { String(format: "%02x", $0) }.joined()
-                    request.addValue("sha256=\(hexSig)", forHTTPHeaderField: "X-Jared-Signature")
-                } else {
-                    logger.warning("Webhook \(webhook.url, privacy: .public): auth configured but no Keychain secret found — delivering unsigned")
-                }
-            }
+            var request = WebHookManager.makeDeliveryRequest(
+                url: parsedUrl,
+                webhook: webhook,
+                body: webhookBody,
+                deliveryId: deliveryId,
+                keychain: keychain
+            )
 
             do {
                 let (data, response) = try await urlSession.data(for: request)
@@ -172,6 +161,10 @@ class WebHookManager: MessageDelegate, RoutingModule {
             if let inlineSecret = newHook.auth?.secret {
                 keychain.save(secret: inlineSecret, for: newHook.url)
             }
+            // Signing is keyed by Keychain; keep auth enabled when a secret exists
+            if newHook.auth == nil, keychain.secret(for: newHook.url) != nil {
+                newHook.auth = WebhookAuth(secret: nil)
+            }
             newHook.routes = (newHook.routes ?? []).map { route in
                 var newRoute = route
                 newRoute.call = { [weak self] msg in
@@ -186,7 +179,66 @@ class WebHookManager: MessageDelegate, RoutingModule {
         logger.notice("Webhooks updated: \(self.webhooks.map { $0.url }.joined(separator: ", "), privacy: .public)")
     }
 
-    private static func createWebhookBody(_ message: Message) -> Data? {
-        return try? JSONEncoder().encode(message)
+    static func createWebhookBody(_ message: Message) -> Data? {
+        try? JSONEncoder().encode(message)
+    }
+
+    /// Test payload uses the same Message JSON shape as production, plus `_jared_test: true`.
+    static func createTestWebhookBody() -> Data? {
+        let message = Message(
+            body: TextBody("/test"),
+            date: Date(),
+            sender: Person(givenName: "Test", handle: "test@example.com", isMe: false),
+            recipient: Person(givenName: "Test", handle: "test@example.com", isMe: true)
+        )
+        guard let base = createWebhookBody(message),
+              var object = try? JSONSerialization.jsonObject(with: base) as? [String: Any] else {
+            return nil
+        }
+        object["_jared_test"] = true
+        return try? JSONSerialization.data(withJSONObject: object)
+    }
+
+    static func richWebhook(from dictionary: [String: Any]) -> RichWebhook? {
+        guard let data = try? JSONSerialization.data(withJSONObject: dictionary) else { return nil }
+        return try? JSONDecoder().decode(RichWebhook.self, from: data)
+    }
+
+    /// Resolves signing from config `auth` or an existing Keychain secret.
+    static func richWebhookForDelivery(from dictionary: [String: Any], keychain: KeychainAccessor) -> RichWebhook? {
+        guard var webhook = richWebhook(from: dictionary) else { return nil }
+        if webhook.auth == nil, keychain.secret(for: webhook.url) != nil {
+            webhook.auth = WebhookAuth(secret: nil)
+        }
+        return webhook
+    }
+
+    static func makeDeliveryRequest(
+        url: URL,
+        webhook: RichWebhook,
+        body: Data,
+        deliveryId: String,
+        keychain: KeychainAccessor
+    ) -> URLRequest {
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = body
+        request.addValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        request.addValue(deliveryId, forHTTPHeaderField: "X-Jared-Delivery-Id")
+        request.addValue(webhook.url, forHTTPHeaderField: "X-Jared-Webhook-Id")
+        request.timeoutInterval = webhook.effectiveTimeout
+
+        if webhook.auth != nil {
+            if let secret = keychain.secret(for: webhook.url) {
+                let key = SymmetricKey(data: Data(secret.utf8))
+                let sig = HMAC<SHA256>.authenticationCode(for: body, using: key)
+                let hexSig = sig.map { String(format: "%02x", $0) }.joined()
+                request.addValue("sha256=\(hexSig)", forHTTPHeaderField: "X-Jared-Signature")
+            } else {
+                logger.warning("Webhook \(webhook.url, privacy: .public): auth configured but no Keychain secret found — delivering unsigned")
+            }
+        }
+
+        return request
     }
 }
