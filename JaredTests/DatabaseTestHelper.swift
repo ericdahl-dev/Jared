@@ -51,6 +51,7 @@ INSERT INTO "main"."chat_message_join" ("chat_id", "message_id", "message_date")
     
     func insertHandle(id: String, service: String) -> Int {
         var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
         
         if sqlite3_prepare_v2(db, insertHandleQuery, -1, &statement, nil) != SQLITE_OK {
             let errmsg = String(cString: sqlite3_errmsg(db)!)
@@ -66,16 +67,14 @@ INSERT INTO "main"."chat_message_join" ("chat_id", "message_id", "message_date")
             print("failure binding foo: \(errmsg)")
         }
         
-        if sqlite3_step(statement) == SQLITE_DONE {
-            print("Successfully inserted row.")
-            
-        }
+        _ = sqlite3_step(statement)
         
         return Int(sqlite3_last_insert_rowid(db))
     }
     
     func insertChat(accountId: String, service: String, roomName: String = "") -> Int {
         var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
         
         if sqlite3_prepare_v2(db, insertChatQuery, -1, &statement, nil) != SQLITE_OK {
             let errmsg = String(cString: sqlite3_errmsg(db)!)
@@ -100,15 +99,14 @@ INSERT INTO "main"."chat_message_join" ("chat_id", "message_id", "message_date")
             print("failure binding foo: \(errmsg)")
         }
         
-        if sqlite3_step(statement) == SQLITE_DONE {
-            print("Successfully inserted row.")
-        }
+        _ = sqlite3_step(statement)
         
         return Int(sqlite3_last_insert_rowid(db))
     }
     
     func linkChatAndHandle(chatID: Int, handleID: Int) -> Void {
         var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
         
         if sqlite3_prepare_v2(db, insertChatHandleJoin, -1, &statement, nil) != SQLITE_OK {
             let errmsg = String(cString: sqlite3_errmsg(db)!)
@@ -124,13 +122,12 @@ INSERT INTO "main"."chat_message_join" ("chat_id", "message_id", "message_date")
             print("failure binding foo: \(errmsg)")
         }
         
-        if sqlite3_step(statement) == SQLITE_DONE {
-            print("Successfully inserted row.")
-        }
+        _ = sqlite3_step(statement)
     }
     
     func insertMessage(guid: String, messageText: String, handleID: Int, service: String, account: String, accountGuid: String, date: Int?, dateRead: Int?, dateDelivered: Int?, isFromMe: Bool, hasAttachments: Bool, destinationCallerID: String, roomNames: String? = nil, associatedMessageGUID: String? = nil, sendStyleId: String? = nil, associatedMessageType: Int? = nil) -> Int {
         var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
         
         if sqlite3_prepare_v2(db, insertMessageQuery, -1, &statement, nil) != SQLITE_OK {
             let errmsg = String(cString: sqlite3_errmsg(db)!)
@@ -202,17 +199,14 @@ INSERT INTO "main"."chat_message_join" ("chat_id", "message_id", "message_date")
             print("failure binding foo: \(errmsg)")
         }
         
-        let result = sqlite3_step(statement)
-        print(String(cString: sqlite3_errmsg(db)!))
-        if result == SQLITE_DONE {
-            print("Successfully inserted row.")
-        }
+        _ = sqlite3_step(statement)
         
         return Int(sqlite3_last_insert_rowid(db))
     }
     
     func linkChatAndMessage(chatID: Int, messageID: Int, date: Int) {
         var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
         
         if sqlite3_prepare_v2(db, insertChatMessageJoin, -1, &statement, nil) != SQLITE_OK {
             let errmsg = String(cString: sqlite3_errmsg(db)!)
@@ -232,9 +226,7 @@ INSERT INTO "main"."chat_message_join" ("chat_id", "message_id", "message_date")
             print("failure binding foo: \(errmsg)")
         }
         
-        if sqlite3_step(statement) == SQLITE_DONE {
-            print("Successfully inserted row.")
-        }
+        _ = sqlite3_step(statement)
     }
     
     let insertAttachmentQuery = """
@@ -242,6 +234,7 @@ INSERT INTO "main"."chat_message_join" ("chat_id", "message_id", "message_date")
     """
     func insertAttachment(guid: String, createdAt: Int, filePath: String, mimeType: String, isOutgoing: Bool, transferName: String, isSticker: Bool) -> Int {
         var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
         
         if sqlite3_prepare_v2(db, insertAttachmentQuery, -1, &statement, nil) != SQLITE_OK {
             let errmsg = String(cString: sqlite3_errmsg(db)!)
@@ -277,15 +270,14 @@ INSERT INTO "main"."chat_message_join" ("chat_id", "message_id", "message_date")
             print("failure binding foo: \(errmsg)")
         }
         
-        if sqlite3_step(statement) == SQLITE_DONE {
-            print("Successfully inserted row.")
-        }
+        _ = sqlite3_step(statement)
         
         return Int(sqlite3_last_insert_rowid(db))
     }
     
     func linkAttachmentAndMessage(messageID: Int, attachmentID: Int) {
         var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
         
         if sqlite3_prepare_v2(db, insertMessageAttachmentJoin, -1, &statement, nil) != SQLITE_OK {
             let errmsg = String(cString: sqlite3_errmsg(db)!)
@@ -301,10 +293,6 @@ INSERT INTO "main"."chat_message_join" ("chat_id", "message_id", "message_date")
             print("failure binding foo: \(errmsg)")
         }
         
-        let result = sqlite3_step(statement)
-        print(String(cString: sqlite3_errmsg(db)!))
-        if result == SQLITE_DONE {
-            print("Successfully inserted row.")
-        }
+        _ = sqlite3_step(statement)
     }
 }
