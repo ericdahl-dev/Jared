@@ -12,16 +12,13 @@ struct ConfigurationFile: Decodable {
     let routes: [String: RouteConfiguration]
     let webhooks: [RichWebhook]
     let webServer: WebserverConfiguration
-    let llm: LLMConfiguration?
 
     init(routes: [String: RouteConfiguration] = [:],
          webhooks: [RichWebhook] = [],
-         webServer: WebserverConfiguration = WebserverConfiguration(port: 3000),
-         llm: LLMConfiguration? = nil) {
+         webServer: WebserverConfiguration = WebserverConfiguration(port: 3000)) {
         self.routes = routes
         self.webhooks = webhooks
         self.webServer = webServer
-        self.llm = llm
     }
 
     init(from decoder: Decoder) throws {
@@ -29,11 +26,10 @@ struct ConfigurationFile: Decodable {
         routes    = (try? c.decodeIfPresent([String: RouteConfiguration].self, forKey: .routes))   ?? [:]
         webhooks  = (try? c.decodeIfPresent([RichWebhook].self,                    forKey: .webhooks)) ?? []
         webServer = (try? c.decodeIfPresent(WebserverConfiguration.self,       forKey: .webServer)) ?? WebserverConfiguration(port: 3000)
-        llm       = try? c.decodeIfPresent(LLMConfiguration.self,              forKey: .llm)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case routes, webhooks, webServer, llm
+        case routes, webhooks, webServer
     }
 }
 
