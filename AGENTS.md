@@ -28,14 +28,14 @@ Optional repository **secrets** for signing/notarization: `APPLE_ID`, `APPLE_APP
 
 ## Architecture Overview
 
-Jared is a macOS iMessage bot. It polls the local Messages SQLite database (`~/Library/Messages/chat.db`) every ~5 seconds for new rows, constructs `Message` objects, and routes them through a plugin system.
+Jared is a macOS iMessage bot. It polls the local Messages SQLite database (`~/Library/Messages/chat.db`) every ~5 seconds for new rows, constructs `Message` objects, and routes them through a module system.
 
 **Data flow:**
 ```
 DatabaseHandler (SQLite polling)
   → Router.route(message:)
     → MessageDelegate.didProcess() [webhooks notified of every message]
-    → Route comparisons matched → route.call(message) [plugin handler invoked]
+    → Route comparisons matched → route.call(message) [module handler invoked]
 ```
 
 **Outgoing messages** are sent via AppleScript (`.scpt` files bundled in the app). Different scripts handle group chats vs. 1:1 conversations.
@@ -44,24 +44,15 @@ DatabaseHandler (SQLite polling)
 
 | File/Target | Role |
 |---|---|
-| `JaredFramework/` | Public API framework; shared with plugins. Defines `Message`, `Route`, `RoutingModule`, `MessageSender`, entities, etc. |
+| `JaredFramework/` | Public API framework. Defines `Message`, `Route`, `RoutingModule`, `MessageSender`, entities, etc. |
 | `Jared/DatabaseHandler.swift` | Polls `chat.db`, constructs `Message` objects, feeds them to `Router` |
 | `Jared/Router.swift` | Matches incoming messages against all registered `Route`s |
-| `Jared/PluginManager.swift` | Loads `.bundle` plugin files from `~/Library/Application Support/Jared/Plugins/`, manages `RoutingModule` list |
+| `Jared/PluginManager.swift` | Manages the list of built-in `RoutingModule`s |
 | `Jared/CoreModule.swift` | Built-in commands: `/ping`, `/send`, `/schedule`, `/name`, `/whoami`, `/barf`, etc. |
 | `Jared/InternalModule.swift` | `/help`, `/reload`, `/enable`, `/disable` commands |
 | `Jared/WebHookManager.swift` | Implements both `MessageDelegate` (notify on all messages) and `RoutingModule` (webhook-defined routes) |
 | `Jared/JaredWebServer.swift` | REST API web server |
 | `JaredUI/` | SwiftUI/AppKit macOS app wrapper (thin — mostly wires up the core) |
-
-## Plugin System
-
-Plugins are `.bundle` files implementing `RoutingModule`. A plugin must:
-1. Set `JaredFrameworkVersion = "J3.0.0"` in its `Info.plist` — version must match exactly or the plugin is silently rejected (`PluginManager.loadBundle`).
-2. Have a `principalClass` that conforms to `RoutingModule`.
-3. Be placed in `~/Library/Application Support/Jared/Plugins/`.
-
-See `Documentation/SampleModule/` for a reference implementation.
 
 ## Route Comparisons
 
@@ -99,7 +90,7 @@ Route names in `config.routes` are lowercased keys matching `Route.name.lowercas
 
 Tests are in `JaredTests/`. Mocks live in `JaredTests/Mocks/`:
 - `JaredMock` — stub `MessageSender`
-- `MockPluginManager` — tracks route call counts via `callCounts[routeName]`
+- `MockPluginManager` — stub `PluginController` that tracks route call counts via `callCounts[routeName]`
 - `MockRouter` — captures routed messages
 - `URLProtocolMock` — intercepts URLSession for webhook tests
 

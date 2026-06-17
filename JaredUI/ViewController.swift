@@ -226,17 +226,13 @@ class ViewController: NSViewController, DiskAccessDelegate {
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
 
-        let reloadBtn  = toolButton("Reload plugins",      icon: "arrow.clockwise", action: #selector(ReloadButtonPressed(_:)))
-        let pluginsBtn = toolButton("Open plugins folder", icon: "folder",          action: #selector(OpenPluginsButtonAction(_:)))
+        let reloadBtn = toolButton("Reload Configuration", icon: "arrow.clockwise", action: #selector(ReloadButtonPressed(_:)))
 
         container.addSubview(reloadBtn)
-        container.addSubview(pluginsBtn)
         NSLayoutConstraint.activate([
             container.heightAnchor.constraint(equalToConstant: 56),
             reloadBtn.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
             reloadBtn.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            pluginsBtn.leadingAnchor.constraint(equalTo: reloadBtn.trailingAnchor, constant: 8),
-            pluginsBtn.centerYAnchor.constraint(equalTo: container.centerYAnchor),
         ])
         return container
     }
@@ -501,12 +497,6 @@ class ViewController: NSViewController, DiskAccessDelegate {
                 PermissionsHelper.requestMessageAutomation()
             }
         }
-    }
-
-    @IBAction func OpenPluginsButtonAction(_ sender: Any) {
-        let appsupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let pluginDir = appsupport.appendingPathComponent("Jared").appendingPathComponent("Plugins")
-        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: pluginDir.path)
     }
 
     @IBAction func ReloadButtonPressed(_ sender: Any) {
