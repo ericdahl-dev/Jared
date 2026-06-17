@@ -799,43 +799,20 @@ class WebhookManagementWindowController: NSWindowController,
 
     @objc private func sendTest() {
         guard selectedRow >= 0, selectedRow < webhooks.count,
-              let hook = WebHookManager.richWebhookForDelivery(from: webhooks[selectedRow], keychain: keychain),
-              let url = URL(string: hook.url),
-              let body = WebHookManager.createTestWebhookBody() else { return }
-
-        deliveryStatus.stringValue = "Sending test payload…"
-        deliveryStatus.textColor   = .secondaryLabelColor
+              let hook = WebhookDeliveryClient.richWebhookForDelivery(from: webhooks[selectedRow], keychain: keychain),
+              let body = WebhookDeliveryClient.createTestWebhookBody() else { return }
 
         if let inlineSecret = hook.auth?.secret {
             keychain.save(secret: inlineSecret, for: hook.url)
         }
 
-        let request = WebHookManager.makeDeliveryRequest(
-            url: url,
-            webhook: hook,
-            body: body,
-            deliveryId: UUID().uuidString,
-            keychain: keychain
-        )
+        deliveryStatus.stringValue = "Sending test payload…"
+        deliveryStatus.textColor   = .secondaryLabelColor
 
-        URLSession.shared.dataTask(with: request) { [weak self] _, response, error in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                if let error {
-                    self.deliveryStatus.stringValue = "Error: \(error.localizedDescription)"
-                    self.deliveryStatus.textColor   = .systemRed
-                    return
-                }
-                let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-                if (200...299).contains(code) {
-                    self.deliveryStatus.stringValue = "Test delivered ✓ \(code)"
-                    self.deliveryStatus.textColor   = .systemGreen
-                } else {
-                    self.deliveryStatus.stringValue = "Test failed ✗ HTTP \(code)"
-                    self.deliveryStatus.textColor   = .systemOrange
-                }
-            }
-        }.resume()
+        let client = WebhookDeliveryClient(keychain: keychain, deliveryStore: deliveryStore)
+        Task {
+            await client.deliverTestBody(body, to: hook)
+        }
     }
 
     @objc private func rotateHMACSecret() {
