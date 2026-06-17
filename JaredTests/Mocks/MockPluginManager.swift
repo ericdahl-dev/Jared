@@ -9,6 +9,10 @@
 import Foundation
 import JaredFramework
 
+struct StubRuntimeFlags: RuntimeFlags {
+    var isDisabled: Bool
+}
+
 let startWithString = "/startWith"
 let containsString = "/contains"
 let isString = "/is"
