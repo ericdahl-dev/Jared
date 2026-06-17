@@ -108,7 +108,7 @@ class WebhookDeliveryTests: XCTestCase {
     }
 
     func testTestWebhookBodyUsesProductionShape() {
-        guard let body = WebHookManager.createTestWebhookBody(),
+        guard let body = WebhookDeliveryClient.createTestWebhookBody(),
               let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else {
             XCTFail("Failed to build test webhook body"); return
         }
@@ -121,7 +121,7 @@ class WebhookDeliveryTests: XCTestCase {
     }
 
     func testTestWebhookBodyPreservesEncoderKeyOrder() {
-        guard let body = WebHookManager.createTestWebhookBody(),
+        guard let body = WebhookDeliveryClient.createTestWebhookBody(),
               let bodyString = String(data: body, encoding: .utf8) else {
             XCTFail("Failed to build test webhook body"); return
         }
@@ -134,12 +134,12 @@ class WebhookDeliveryTests: XCTestCase {
     func testMakeDeliveryRequestMatchesProductionHeaders() {
         keychain.save(secret: "test-secret", for: WEBHOOK_URL)
         let webhook = RichWebhook(url: WEBHOOK_URL, auth: WebhookAuth(secret: "test-secret"))
-        guard let body = WebHookManager.createTestWebhookBody(),
+        guard let body = WebhookDeliveryClient.createTestWebhookBody(),
               let url = URL(string: WEBHOOK_URL) else {
             XCTFail("Failed to build test request inputs"); return
         }
 
-        let request = WebHookManager.makeDeliveryRequest(
+        let request = WebhookDeliveryClient.makeDeliveryRequest(
             url: url,
             webhook: webhook,
             body: body,
@@ -166,7 +166,7 @@ class WebhookDeliveryTests: XCTestCase {
         keychain.save(secret: "keychain-only", for: WEBHOOK_URL)
         let dict: [String: Any] = ["url": WEBHOOK_URL, "enabled": true]
 
-        let webhook = WebHookManager.richWebhookForDelivery(from: dict, keychain: keychain)
+        let webhook = WebhookDeliveryClient.richWebhookForDelivery(from: dict, keychain: keychain)
 
         XCTAssertNotNil(webhook?.auth, "Delivery helper should enable signing from Keychain")
     }
@@ -501,7 +501,7 @@ class WebhookDeliveryTests: XCTestCase {
                                 sender: sender, keychain: keychain,
                                 deliveryStore: WebhookDeliveryStore(fileURL: fileURL))
 
-        let exp = expectation(forNotification: .webhookDelivered, object: wm)
+        let exp = expectation(forNotification: .webhookDelivered, object: wm.client)
         wm.didProcess(message: SAMPLE_MESSAGE)
         wait(for: [exp], timeout: 5)
 
