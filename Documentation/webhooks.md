@@ -61,6 +61,22 @@ Add webhook entries to the `webhooks` array in `config.json` (`~/Library/Applica
 }
 ```
 
+### Disabling built-in commands
+
+Add a `disabledCommands` map to `config.json` to prevent specific slash commands from being routed:
+
+```json
+{
+  "disabledCommands": {
+    "/remote": true
+  }
+}
+```
+
+Keys are lowercased command names (e.g. `"/ping"`, `"/send"`). A value of `true` disables that command; `false` or absent leaves it enabled.
+
+**Legacy `routes` key** — configs using the old `"routes": { "name": { "disabled": true } }` format continue to load correctly. The decoder maps legacy entries to `disabledCommands` automatically.
+
 ### Backward compatibility
 
 The simple format from Jared v1.6.x loads unchanged. All new fields have defaults:

@@ -72,12 +72,12 @@ Commands parse parameters by splitting on commas: `message.getTextParameters()` 
 Runtime config at `~/Library/Application Support/Jared/config.json`. Schema:
 ```json
 {
-  "routes": { "routename": { "disabled": true } },
+  "disabledCommands": { "/ping": true },
   "webhooks": [{ "url": "https://...", "routes": [] }],
   "webServer": { "port": 3005 }
 }
 ```
-Route names in `config.routes` are lowercased keys matching `Route.name.lowercased()`.
+`disabledCommands` keys are lowercased command names (e.g. `"/ping"`). Legacy `"routes": { "name": { "disabled": true } }` configs are decoded as aliases automatically.
 
 ## Entities & Recipients
 
