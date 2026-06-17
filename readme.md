@@ -84,11 +84,6 @@ See [config-sample.json](Documentation/config-sample.json) for an example.
 ## Extensions
 Jared Provides a variety of APIs to allow you to easily add your own commands, automate messages, and more. For all API documentation, see the [documentation hub](/Documentation).
 
-### Plugins  
-Additional routes can be added via modularized plugins, written in native Swift code. Plugins are loaded dynamically from the `~/Library/Application Support/Jared/Plugins` folder. To install a module, drag it in there and then send `/reload` to Jared, or click `Reload Plugins` in the UI.
-  
-For more information on developing your own plugins, see the [plugin documentation](Documentation/plugins.md). If you developed any plugins, please send me a link so I can add a link here! I will be working on a few extra modules of my own as well, and will add them here when they are complete.
-
 ### Webhooks
 Jared supports webhooks for sending your server information about incoming and outgoing messages. Your server can respond to these requests to send messages, or use the REST API to send messages at any time. To configure webhooks, add them to the `config.json` mentioned above. For more info on the webhooks API, check out the [webhook documentation](Documentation/webhooks.md).
 
@@ -96,6 +91,6 @@ Jared supports webhooks for sending your server information about incoming and o
 Jared contains a web server with a REST API that can be enabled. This allows you make HTTP requests to send messages to any recipient. For more information, [check out the REST API documentation](Documentation/restapi.md).
 
 ## How Jared works  
-Jared reads from the Messages database on a set interval and queries for new messages. It provides a routing framework for actioning on messages, and uses AppleScript to send outgoing messages. It's also multi-threaded so it can take care of multiple requests at once. Jared allows expansion via `.bundle` plugin files, webhooks, and a REST API. This allows commands to be added without modifying the main Jared code base. 
+Jared reads from the Messages database on a set interval and queries for new messages. It provides a routing framework for actioning on messages, and uses AppleScript to send outgoing messages. It's also multi-threaded so it can take care of multiple requests at once. Jared allows expansion via webhooks and a REST API. 
 
 I've tried using private APIs such as MessagesKit to send/receive messages to no avail so far. If you have any leads on this front I'd love to hear about it. 

@@ -61,7 +61,7 @@ class MenuBarManager {
         sleepItem.state = UserDefaults.standard.bool(forKey: JaredConstants.preventSystemSleep) ? .on : .off
         menu.addItem(sleepItem)
 
-        let reloadItem = NSMenuItem(title: "Reload Plugins", action: #selector(reloadPlugins), keyEquivalent: "r")
+        let reloadItem = NSMenuItem(title: "Reload Configuration", action: #selector(reloadConfiguration), keyEquivalent: "r")
         reloadItem.target = self
         menu.addItem(reloadItem)
 
@@ -89,7 +89,7 @@ class MenuBarManager {
         UserDefaults.standard.set(!current, forKey: JaredConstants.preventSystemSleep)
     }
 
-    @objc private func reloadPlugins() {
+    @objc private func reloadConfiguration() {
         pluginManager.reload()
     }
 

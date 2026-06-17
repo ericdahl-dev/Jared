@@ -39,7 +39,7 @@ Replace `YOUR-WORKFLOW-ID` with the path from your n8n Webhook node trigger URL.
 
 ### Step 2 — Reload Jared
 
-Either send `/reload` in any iMessage conversation, or click **Reload Plugins** in the Jared menu bar icon.
+Either send `/reload` in any iMessage conversation, or click **Reload Configuration** in the Jared menu bar icon.
 
 ### Step 3 — Import the starter workflow
 
