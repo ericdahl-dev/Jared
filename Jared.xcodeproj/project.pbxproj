@@ -37,11 +37,6 @@
 		EC000001000000000000AA44 /* ScheduleModuleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA45 /* ScheduleModuleTests.swift */; };
 		EC000001000000000000AA46 /* PersistentContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B353946124E64DDE00F9424A /* PersistentContainer.swift */; };
 		EC000001000000000000AA47 /* CoreModule.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = B3F185F524E51C880051C696 /* CoreModule.xcdatamodeld */; };
-		EC000001000000000000AA50 /* MessageSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA53 /* MessageSource.swift */; };
-		EC000001000000000000AA51 /* MessageSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA53 /* MessageSource.swift */; };
-		EC000001000000000000AA54 /* InMemoryMessageSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA57 /* InMemoryMessageSource.swift */; };
-		EC000001000000000000AA55 /* InMemoryMessageSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA57 /* InMemoryMessageSource.swift */; };
-		EC000001000000000000AA58 /* MessageSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA59 /* MessageSourceTests.swift */; };
 		EC000001000000000000AA30 /* ConfigurationApplier.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA33 /* ConfigurationApplier.swift */; };
 		EC000001000000000000AA08 /* ConfigurationWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA10 /* ConfigurationWatcher.swift */; };
 		EC000001000000000000AA09 /* ConfigurationWatcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AA11 /* ConfigurationWatcherTests.swift */; };
@@ -63,6 +58,8 @@
 		B353946424E7A89A00F9424A /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = B353946324E7A89A00F9424A /* Message.swift */; };
 		B353946824E7C58E00F9424A /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = B3BBA7CD1CB3259A00E1749C /* Localizable.strings */; };
 		B35CE7152196AD4E002F52A7 /* DatabaseHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B35CE7142196AD4E002F52A7 /* DatabaseHandler.swift */; };
+		EC67DB00000000000000A002 /* ChatDBReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC67DB00000000000000A001 /* ChatDBReader.swift */; };
+		EC67MB00000000000000A002 /* MessageBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC67MB00000000000000A001 /* MessageBuilder.swift */; };
 		B361EEBB1F1DE24C0041113C /* config.json in Resources */ = {isa = PBXBuildFile; fileRef = B361EEBA1F1DE24C0041113C /* config.json */; };
 		B36563EF1F3D68980064B114 /* TouchBarTextFieldExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = B36563EE1F3D68980064B114 /* TouchBarTextFieldExtension.swift */; };
 		B36710E224DFB5EC00DA1C5D /* JaredMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = B347A4A824DD119A00E93657 /* JaredMock.swift */; };
@@ -97,6 +94,8 @@
 		B3B844C524D9288000DC162A /* RouterDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3B844C324D9287F00DC162A /* RouterDelegate.swift */; };
 		B3B844C724D9298000DC162A /* MockRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3B844C624D9298000DC162A /* MockRouter.swift */; };
 		B3B844C824D92C2200DC162A /* DatabaseHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B35CE7142196AD4E002F52A7 /* DatabaseHandler.swift */; };
+		EC67DB00000000000000A004 /* ChatDBReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC67DB00000000000000A001 /* ChatDBReader.swift */; };
+		EC67MB00000000000000A004 /* MessageBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC67MB00000000000000A001 /* MessageBuilder.swift */; };
 		B3B844C924D92D1500DC162A /* ContactHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3327DC32206607B009DD882 /* ContactHelper.swift */; };
 		B3B844CB24DA5D1700DC162A /* DiskAccessDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3B844CA24DA5D1700DC162A /* DiskAccessDelegate.swift */; };
 		B3B844CC24DA671E00DC162A /* DiskAccessDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3B844CA24DA5D1700DC162A /* DiskAccessDelegate.swift */; };
@@ -122,6 +121,7 @@
 		B3EF1DAC2206E17900953DE7 /* Entities.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3EF1DAB2206E17900953DE7 /* Entities.swift */; };
 		B3EF1DAE2206E19100953DE7 /* Bodies.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3EF1DAD2206E19100953DE7 /* Bodies.swift */; };
 		B3EF1DB02206E4EB00953DE7 /* MessageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3EF1DAF2206E4EB00953DE7 /* MessageTests.swift */; };
+		EC67MT00000000000000A002 /* MessageBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC67MT00000000000000A001 /* MessageBuilderTests.swift */; };
 		B3F185F724E51C880051C696 /* CoreModule.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = B3F185F524E51C880051C696 /* CoreModule.xcdatamodeld */; };
 		B3FB28F224E9BAF7003BA6CB /* PermissionsHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3FB28F124E9BAF7003BA6CB /* PermissionsHelper.swift */; };
 		B3FB28F424E9BCBD003BA6CB /* JaredConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3FB28F324E9BCBD003BA6CB /* JaredConstants.swift */; };
@@ -207,9 +207,6 @@
 		EC66DC00000000000000A004 /* WebhookRouteFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebhookRouteFactory.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA43 /* ScheduleModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleModule.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA45 /* ScheduleModuleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleModuleTests.swift; sourceTree = "<group>"; };
-		EC000001000000000000AA53 /* MessageSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageSource.swift; sourceTree = "<group>"; };
-		EC000001000000000000AA57 /* InMemoryMessageSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InMemoryMessageSource.swift; sourceTree = "<group>"; };
-		EC000001000000000000AA59 /* MessageSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageSourceTests.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA33 /* ConfigurationApplier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationApplier.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA10 /* ConfigurationWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationWatcher.swift; sourceTree = "<group>"; };
 		EC000001000000000000AA11 /* ConfigurationWatcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationWatcherTests.swift; sourceTree = "<group>"; };
@@ -227,6 +224,8 @@
 		B353946124E64DDE00F9424A /* PersistentContainer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PersistentContainer.swift; sourceTree = "<group>"; };
 		B353946324E7A89A00F9424A /* Message.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
 		B35CE7142196AD4E002F52A7 /* DatabaseHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseHandler.swift; sourceTree = "<group>"; };
+		EC67DB00000000000000A001 /* ChatDBReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatDBReader.swift; sourceTree = "<group>"; };
+		EC67MB00000000000000A001 /* MessageBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageBuilder.swift; sourceTree = "<group>"; };
 		B361EEBA1F1DE24C0041113C /* config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = config.json; sourceTree = "<group>"; };
 		B36563EE1F3D68980064B114 /* TouchBarTextFieldExtension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TouchBarTextFieldExtension.swift; sourceTree = "<group>"; };
 		B369508F24DE8FD00027CB1E /* Configuration.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Configuration.plist; sourceTree = "<group>"; };
@@ -273,6 +272,7 @@
 		B3EF1DAB2206E17900953DE7 /* Entities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Entities.swift; sourceTree = "<group>"; };
 		B3EF1DAD2206E19100953DE7 /* Bodies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bodies.swift; sourceTree = "<group>"; };
 		B3EF1DAF2206E4EB00953DE7 /* MessageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageTests.swift; sourceTree = "<group>"; };
+		EC67MT00000000000000A001 /* MessageBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageBuilderTests.swift; sourceTree = "<group>"; };
 		B3F185F624E51C880051C696 /* CoreModule.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = CoreModule.xcdatamodel; sourceTree = "<group>"; };
 		B3FB28F124E9BAF7003BA6CB /* PermissionsHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsHelper.swift; sourceTree = "<group>"; };
 		B3FB28F324E9BCBD003BA6CB /* JaredConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JaredConstants.swift; sourceTree = "<group>"; };
@@ -382,6 +382,7 @@
 				EC000001000000000000AA45 /* ScheduleModuleTests.swift */,
 				EC000001000000000000AA24 /* MessageMatcherTests.swift */,
 				B3EF1DAF2206E4EB00953DE7 /* MessageTests.swift */,
+				EC67MT00000000000000A001 /* MessageBuilderTests.swift */,
 				B3B844B724D7791700DC162A /* ActionTypeTest.swift */,
 				B347A4AE24DD1CD000E93657 /* GlobalTest.swift */,
 				B347A4AC24DD170C00E93657 /* ActionTest.swift */,
@@ -390,7 +391,6 @@
 				B3B844CF24DA6AC800DC162A /* JaredWebServerTest.swift */,
 				TM0000010000000000000005 /* TunnelManagerTests.swift */,
 				B3B844BF24D8F91900DC162A /* DatabaseHandlerTest.swift */,
-				EC000001000000000000AA59 /* MessageSourceTests.swift */,
 				B319235624DD311B001904BA /* InternalModuleTest.swift */,
 				B3B844C124D8FA7D00DC162A /* DatabaseTestHelper.swift */,
 				B3B844D124DA6B1200DC162A /* Mocks */,
@@ -468,14 +468,14 @@
 				EC66DC00000000000000A001 /* WebhookDeliveryClient.swift */,
 				EC66DC00000000000000A004 /* WebhookRouteFactory.swift */,
 				EC000001000000000000AA43 /* ScheduleModule.swift */,
-				EC000001000000000000AA53 /* MessageSource.swift */,
-				EC000001000000000000AA57 /* InMemoryMessageSource.swift */,
 				EC000001000000000000AA33 /* ConfigurationApplier.swift */,
 				EC000001000000000000AA10 /* ConfigurationWatcher.swift */,
 				EC000001000000000000AA23 /* MessageMatcher.swift */,
 				B3C59283224DD17900116ECB /* JaredWebServer.swift */,
 				TM0000010000000000000003 /* TunnelManager.swift */,
 				B35CE7142196AD4E002F52A7 /* DatabaseHandler.swift */,
+				EC67DB00000000000000A001 /* ChatDBReader.swift */,
+				EC67MB00000000000000A001 /* MessageBuilder.swift */,
 				B38BB6B024EBB530000700F7 /* Helpers */,
 				B38BB6AE24EBB4CE000700F7 /* Structures */,
 				B3BF17C9244ED26800CC44C5 /* Delegates */,
@@ -781,6 +781,8 @@
 				B36563EF1F3D68980064B114 /* TouchBarTextFieldExtension.swift in Sources */,
 				B3F185F724E51C880051C696 /* CoreModule.xcdatamodeld in Sources */,
 				B35CE7152196AD4E002F52A7 /* DatabaseHandler.swift in Sources */,
+				EC67DB00000000000000A002 /* ChatDBReader.swift in Sources */,
+				EC67MB00000000000000A002 /* MessageBuilder.swift in Sources */,
 				B3BF17C6244EC47700CC44C5 /* MessageDelegate.swift in Sources */,
 				B3327DC42206607B009DD882 /* ContactHelper.swift in Sources */,
 				B332787C1CB2CB1300BBDD3A /* ViewController.swift in Sources */,
@@ -788,8 +790,6 @@
 				EC66DC00000000000000A002 /* WebhookDeliveryClient.swift in Sources */,
 				EC66DC00000000000000A005 /* WebhookRouteFactory.swift in Sources */,
 					EC000001000000000000AA40 /* ScheduleModule.swift in Sources */,
-					EC000001000000000000AA50 /* MessageSource.swift in Sources */,
-					EC000001000000000000AA54 /* InMemoryMessageSource.swift in Sources */,
 					EC000001000000000000AA30 /* ConfigurationApplier.swift in Sources */,
 					EC000001000000000000AA08 /* ConfigurationWatcher.swift in Sources */,
 				EC000001000000000000AA20 /* MessageMatcher.swift in Sources */,
@@ -828,8 +828,6 @@
 				B319235724DD311B001904BA /* InternalModuleTest.swift in Sources */,
 				B38BB6AF24EBB4D8000700F7 /* Configuration.swift in Sources */,
 					EC000001000000000000AA41 /* ScheduleModule.swift in Sources */,
-				EC000001000000000000AA51 /* MessageSource.swift in Sources */,
-				EC000001000000000000AA55 /* InMemoryMessageSource.swift in Sources */,
 				EC000001000000000000AA46 /* PersistentContainer.swift in Sources */,
 				EC000001000000000000AA47 /* CoreModule.xcdatamodeld in Sources */,
 					EC000001000000000000AA32 /* ConfigurationApplier.swift in Sources */,
@@ -837,6 +835,8 @@
 				EC000001000000000000AA22 /* MessageMatcher.swift in Sources */,
 				B3B844C924D92D1500DC162A /* ContactHelper.swift in Sources */,
 				B3B844C824D92C2200DC162A /* DatabaseHandler.swift in Sources */,
+				EC67DB00000000000000A004 /* ChatDBReader.swift in Sources */,
+				EC67MB00000000000000A004 /* MessageBuilder.swift in Sources */,
 				B3B844C024D8F91900DC162A /* DatabaseHandlerTest.swift in Sources */,
 				EC000001000000000000AB02 /* RouteProvider.swift in Sources */,
 				B3B7E52524EA00BC00A3FBD1 /* JaredConstants.swift in Sources */,
@@ -857,8 +857,8 @@
 				EC000001000000000000AA09 /* ConfigurationWatcherTests.swift in Sources */,
 				EC000001000000000000AA21 /* MessageMatcherTests.swift in Sources */,
 				EC000001000000000000AA44 /* ScheduleModuleTests.swift in Sources */,
-				EC000001000000000000AA58 /* MessageSourceTests.swift in Sources */,
 				B3EF1DB02206E4EB00953DE7 /* MessageTests.swift in Sources */,
+				EC67MT00000000000000A002 /* MessageBuilderTests.swift in Sources */,
 				B32DE51C24D552D300AB3A71 /* MockPluginManager.swift in Sources */,
 				B3B844D024DA6AC800DC162A /* JaredWebServerTest.swift in Sources */,
 				TM0000010000000000000004 /* TunnelManagerTests.swift in Sources */,
