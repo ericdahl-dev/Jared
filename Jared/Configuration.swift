@@ -9,28 +9,39 @@
 import Foundation
 
 struct ConfigurationFile: Decodable {
-    let routes: [String: RouteConfiguration]
+    let disabledCommands: [String: Bool]
     let webhooks: [RichWebhook]
     let webServer: WebserverConfiguration
 
-    init(routes: [String: RouteConfiguration] = [:],
+    init(disabledCommands: [String: Bool] = [:],
          webhooks: [RichWebhook] = [],
          webServer: WebserverConfiguration = WebserverConfiguration(port: 3000)) {
-        self.routes = routes
+        self.disabledCommands = disabledCommands
         self.webhooks = webhooks
         self.webServer = webServer
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        routes    = (try? c.decodeIfPresent([String: RouteConfiguration].self, forKey: .routes))   ?? [:]
-        webhooks  = (try? c.decodeIfPresent([RichWebhook].self,                    forKey: .webhooks)) ?? []
-        webServer = (try? c.decodeIfPresent(WebserverConfiguration.self,       forKey: .webServer)) ?? WebserverConfiguration(port: 3000)
+        // Accept new "disabledCommands" key; fall back to legacy "routes" map for existing configs.
+        if let newMap = try? c.decodeIfPresent([String: Bool].self, forKey: .disabledCommands) {
+            disabledCommands = newMap
+        } else if let legacyRoutes = try? c.decodeIfPresent([String: LegacyRouteConfiguration].self, forKey: .routes) {
+            disabledCommands = legacyRoutes.mapValues { $0.disabled }
+        } else {
+            disabledCommands = [:]
+        }
+        webhooks  = (try? c.decodeIfPresent([RichWebhook].self,            forKey: .webhooks)) ?? []
+        webServer = (try? c.decodeIfPresent(WebserverConfiguration.self,   forKey: .webServer)) ?? WebserverConfiguration(port: 3000)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case routes, webhooks, webServer
+        case disabledCommands, routes, webhooks, webServer
     }
+}
+
+private struct LegacyRouteConfiguration: Decodable {
+    let disabled: Bool
 }
 
 struct WebserverConfiguration: Decodable {
@@ -56,6 +67,3 @@ struct WebserverConfiguration: Decodable {
     }
 }
 
-struct RouteConfiguration: Decodable {
-    let disabled: Bool
-}
