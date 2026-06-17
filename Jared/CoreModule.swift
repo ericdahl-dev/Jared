@@ -9,20 +9,30 @@
 import Foundation
 import Cocoa
 import JaredFramework
-import Contacts
 
 class CoreModule: RoutingModule {
+    static let MAXIMUM_CONCURRENT_SENDS = 3
     var description: String = NSLocalizedString("CoreDescription")
     var routes: [Route] = []
     var sender: MessageSender
-    let MAXIMUM_CONCURRENT_SENDS = 3
-    var currentSends: [String: Int] = [:]
-    
-    required public init(sender: MessageSender) {
+    private let clock: Clock
+    private let rateLimiter: SendRateLimiter
+    private let contacts: ContactNameService
+
+    required convenience public init(sender: MessageSender) {
+        self.init(sender: sender, clock: RealClock(),
+                  rateLimiter: SendRateLimiter(max: CoreModule.MAXIMUM_CONCURRENT_SENDS),
+                  contacts: CNContactNameService())
+    }
+
+    init(sender: MessageSender, clock: Clock = RealClock(),
+         rateLimiter: SendRateLimiter = SendRateLimiter(max: CoreModule.MAXIMUM_CONCURRENT_SENDS),
+         contacts: ContactNameService = CNContactNameService()) {
         self.sender = sender
-        let appsupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Jared").appendingPathComponent("CoreModule")
-        try! FileManager.default.createDirectory(at: appsupport, withIntermediateDirectories: true, attributes: nil)
-        
+        self.clock = clock
+        self.rateLimiter = rateLimiter
+        self.contacts = contacts
+
         let ping = Route(name:"/ping", comparisons: [.startsWith: ["/ping"]], call: {[weak self] in self?.pingCall($0)}, description: NSLocalizedString("pingDescription"))
         
         let thankYou = Route(name:"Thank You", comparisons: [.startsWith: [NSLocalizedString("ThanksJaredCommand")]], call: {[weak self] in self?.thanksJared($0)}, description: NSLocalizedString("ThanksJaredResponse"))
@@ -49,7 +59,8 @@ class CoreModule: RoutingModule {
     }
     
     func barf(_ incoming: Message) -> Void {
-        sender.send(String(data: try! JSONEncoder().encode(incoming), encoding: .utf8) ?? "nil", to: incoming.RespondTo())
+        let encoded = (try? JSONEncoder().encode(incoming)).flatMap { String(data: $0, encoding: .utf8) }
+        sender.send(encoded ?? "nil", to: incoming.RespondTo())
     }
     
     func getWho(_ message: Message) -> Void {
@@ -87,97 +98,52 @@ class CoreModule: RoutingModule {
             return sender.send("Wrong arguments. The third argument must be the message you wish to send.", to: message.RespondTo())
         }
         
-        guard (currentSends[message.sender.handle] ?? 0) < MAXIMUM_CONCURRENT_SENDS else {
-            return sender.send("You can only have \(MAXIMUM_CONCURRENT_SENDS) send operations going at once.", to: message.RespondTo())
+        guard rateLimiter.tryAcquire(message.sender.handle) else {
+            return sender.send("You can only have \(CoreModule.MAXIMUM_CONCURRENT_SENDS) send operations going at once.", to: message.RespondTo())
         }
-        
-        if (currentSends[message.sender.handle] == nil)
-        {
-            currentSends[message.sender.handle] = 0
-        }
-        
-        //Increment the concurrent send counter for this user
-        currentSends[message.sender.handle] = currentSends[message.sender.handle]! + 1
-        
+
         //If there are commas in the message, take the whole message
         if parameters.count > 4 {
             textToSend = parameters[3...(parameters.count - 1)].joined(separator: ",")
         }
-        
-        //Go through the repeat loop asynchronously
+
+        let finalText = textToSend
         Task { [weak self] in
-            guard let self = self else { return }
-            for _ in 1...repeatNum {
-                self.sender.send(textToSend, to: message.RespondTo())
-                try? await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000_000)
-            }
-            self.currentSends[message.sender.handle] = (self.currentSends[message.sender.handle] ?? 0) - 1
+            await self?.performSend(message, text: finalText, times: repeatNum, delay: delay)
         }
+    }
+
+    /// Sends `text` to the message's responder `times` times, pausing `delay`
+    /// seconds between sends, then releases the rate-limiter slot. Extracted so
+    /// the send loop is awaitable/testable with an injected `Clock`.
+    func performSend(_ message: Message, text: String, times: Int, delay: Int = 0) async {
+        for _ in 1...times {
+            sender.send(text, to: message.RespondTo())
+            await clock.sleep(seconds: delay)
+        }
+        rateLimiter.release(message.sender.handle)
     }
     
 
 
     func changeName(_ message: Message) {
         guard let parsedMessage = message.getTextParameters() else {
-            return sender.send("Inappropriate input type", to:message.RespondTo())
+            return sender.send("Inappropriate input type", to: message.RespondTo())
         }
-        
-        if (parsedMessage.count == 1) {
+
+        guard parsedMessage.count > 1 else {
             return sender.send("Wrong arguments.", to: message.RespondTo())
         }
-        
-        guard (CNContactStore.authorizationStatus(for: CNEntityType.contacts) == .authorized) else {
+
+        guard contacts.isAuthorized else {
             return sender.send("Sorry, I do not have access to contacts.", to: message.RespondTo())
         }
-        let store = CNContactStore()
-        
-        let searchPredicate: NSPredicate
-        if (!(message.sender.handle.contains("@"))) {
-            searchPredicate = CNContact.predicateForContacts(matching: CNPhoneNumber(stringValue: message.sender.handle ))
-        } else {
-            searchPredicate = CNContact.predicateForContacts(matchingEmailAddress: message.sender.handle )
-        }
-        
-        let peopleFound = try! store.unifiedContacts(matching: searchPredicate, keysToFetch:[CNContactFamilyNameKey as CNKeyDescriptor, CNContactGivenNameKey as CNKeyDescriptor])
-        
-        
-        //We need to create the contact
-        if (peopleFound.count == 0) {
-            // Creating a new contact
-            let newContact = CNMutableContact()
-            newContact.givenName = parsedMessage[1]
-            newContact.note = "Created By jared.app"
-            
-            //If it contains an at, add the handle as email, otherwise add it as phone
-            if (message.sender.handle.contains("@")) {
-                let homeEmail = CNLabeledValue(label: CNLabelHome, value: (message.sender.handle) as NSString)
-                newContact.emailAddresses = [homeEmail]
-            }
-            else {
-                let iPhonePhone = CNLabeledValue(label: "iPhone", value: CNPhoneNumber(stringValue:message.sender.handle))
-                newContact.phoneNumbers = [iPhonePhone]
-            }
-            
-            let saveRequest = CNSaveRequest()
-            saveRequest.add(newContact, toContainerWithIdentifier:nil)
-            do {
-                try store.execute(saveRequest)
-            } catch {
-                return sender.send("There was an error saving your contact..", to: message.RespondTo())
-            }
-            
+
+        do {
+            try contacts.setGivenName(parsedMessage[1], forHandle: message.sender.handle)
             sender.send("Ok, I'll call you \(parsedMessage[1]) from now on.", to: message.RespondTo())
-        }
-        //The contact already exists, modify the value
-        else {
-            let mutableContact = peopleFound[0].mutableCopy() as! CNMutableContact
-            mutableContact.givenName = parsedMessage[1]
-            
-            let saveRequest = CNSaveRequest()
-            saveRequest.update(mutableContact)
-            try! store.execute(saveRequest)
-            
-            sender.send("Ok, I'll call you \(parsedMessage[1]) from now on.", to: message.RespondTo())
+        } catch {
+            sender.send("There was an error saving your contact..", to: message.RespondTo())
         }
     }
     
