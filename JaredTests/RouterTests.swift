@@ -93,6 +93,28 @@ class RouterTests: XCTestCase {
         XCTAssertEqual(mockPluginManager.callCounts[isString], 1, "Contains delegate was not called")
     }
 
+    func testDisabledFlagsSkipPluginRoutes() {
+        router = Router(pluginManager: mockPluginManager, messageDelegates: [],
+                        flags: StubRuntimeFlags(isDisabled: true))
+        router.route(message: RouterTests.startsWithMessage)
+        XCTAssertNil(mockPluginManager.callCounts[startWithString], "Disabled Jared must not route plugin commands")
+    }
+
+    func testEnableCommandRoutesEvenWhenDisabled() {
+        let enableRoute = MockRoute(sender: JaredMock())
+        enableRoute.add(route: Route(name: "/enable", comparisons: [.is: ["/enable"]],
+                                     call: { _ in self.mockPluginManager.increment(routeName: "/enable") }))
+        mockPluginManager.add(module: enableRoute)
+        router = Router(pluginManager: mockPluginManager, messageDelegates: [],
+                        flags: StubRuntimeFlags(isDisabled: true))
+
+        let enable = Message(body: TextBody("/enable"), date: Date(),
+                             sender: RouterTests.swiftPerson, recipient: RouterTests.mePerson)
+        router.route(message: enable)
+
+        XCTAssertEqual(mockPluginManager.callCounts["/enable"], 1, "/enable must bypass the global disable")
+    }
+
     func testOutgoingMessageNotifiesDelegatesButSkipsPluginRoutes() {
         let delegate = MessageDelegateSpy()
         router = Router(pluginManager: mockPluginManager, messageDelegates: [delegate])

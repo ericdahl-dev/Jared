@@ -20,6 +20,9 @@
 		B319236224DE76A2001904BA /* JaredUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B319236124DE76A2001904BA /* JaredUITests.swift */; };
 		B32DE51524D51F9C00AB3A71 /* RouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B32DE51424D51F9C00AB3A71 /* RouterTests.swift */; };
 		B32DE51624D522DA00AB3A71 /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BF17C1244EBE9A00CC44C5 /* Router.swift */; };
+		EC70RF00000000000000A004 /* RuntimeFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC70RF00000000000000A001 /* RuntimeFlags.swift */; };
+		EC70FP00000000000000A004 /* InboundFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC70FP00000000000000A001 /* InboundFilterPolicy.swift */; };
+		EC70PT00000000000000A002 /* InboundFilterPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC70PT00000000000000A001 /* InboundFilterPolicyTests.swift */; };
 		B32DE51A24D5524300AB3A71 /* Action.swift in Sources */ = {isa = PBXBuildFile; fileRef = B32DE51924D5524300AB3A71 /* Action.swift */; };
 		B32DE51C24D552D300AB3A71 /* MockPluginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B32DE51B24D552D300AB3A71 /* MockPluginManager.swift */; };
 		B332787A1CB2CB1300BBDD3A /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B33278791CB2CB1300BBDD3A /* AppDelegate.swift */; };
@@ -107,6 +110,8 @@
 		B3B844D224DA6BBB00DC162A /* JaredWebServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3C59283224DD17900116ECB /* JaredWebServer.swift */; };
 		B3BBA7D11CB3284A00E1749C /* CoreModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B39EC17D1CB01FEF002C3161 /* CoreModule.swift */; };
 		B3BF17C2244EBE9A00CC44C5 /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BF17C1244EBE9A00CC44C5 /* Router.swift */; };
+		EC70RF00000000000000A002 /* RuntimeFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC70RF00000000000000A001 /* RuntimeFlags.swift */; };
+		EC70FP00000000000000A002 /* InboundFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC70FP00000000000000A001 /* InboundFilterPolicy.swift */; };
 		B3BF17C4244EBF4900CC44C5 /* InternalModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BF17C3244EBF4900CC44C5 /* InternalModule.swift */; };
 		B3BF17C6244EC47700CC44C5 /* MessageDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BF17C5244EC47700CC44C5 /* MessageDelegate.swift */; };
 		EC000001000000000000AB01 /* RouteProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC000001000000000000AB00 /* RouteProvider.swift */; };
@@ -262,6 +267,9 @@
 		B3BBA7CF1CB327C200E1749C /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Main.strings; sourceTree = "<group>"; };
 		B3BBA7D01CB327C200E1749C /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		B3BF17C1244EBE9A00CC44C5 /* Router.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Router.swift; sourceTree = "<group>"; };
+		EC70RF00000000000000A001 /* RuntimeFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeFlags.swift; sourceTree = "<group>"; };
+		EC70FP00000000000000A001 /* InboundFilterPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboundFilterPolicy.swift; sourceTree = "<group>"; };
+		EC70PT00000000000000A001 /* InboundFilterPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboundFilterPolicyTests.swift; sourceTree = "<group>"; };
 		B3BF17C3244EBF4900CC44C5 /* InternalModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InternalModule.swift; sourceTree = "<group>"; };
 		B3BF17C5244EC47700CC44C5 /* MessageDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageDelegate.swift; sourceTree = "<group>"; };
 		EC000001000000000000AB00 /* RouteProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteProvider.swift; sourceTree = "<group>"; };
@@ -388,6 +396,7 @@
 				B347A4AC24DD170C00E93657 /* ActionTest.swift */,
 				B3B844B924D77A4800DC162A /* SendStyleTest.swift */,
 				B32DE51424D51F9C00AB3A71 /* RouterTests.swift */,
+				EC70PT00000000000000A001 /* InboundFilterPolicyTests.swift */,
 				B3B844CF24DA6AC800DC162A /* JaredWebServerTest.swift */,
 				TM0000010000000000000005 /* TunnelManagerTests.swift */,
 				B3B844BF24D8F91900DC162A /* DatabaseHandlerTest.swift */,
@@ -463,6 +472,8 @@
 				B361EEBA1F1DE24C0041113C /* config.json */,
 				B3EF1DA92206E09B00953DE7 /* Jared.swift */,
 				B3BF17C1244EBE9A00CC44C5 /* Router.swift */,
+				EC70RF00000000000000A001 /* RuntimeFlags.swift */,
+				EC70FP00000000000000A001 /* InboundFilterPolicy.swift */,
 				B39A65DF1CC1FB1B003E26B0 /* PluginManager.swift */,
 				B3327DC522066427009DD882 /* WebHookManager.swift */,
 				EC66DC00000000000000A001 /* WebhookDeliveryClient.swift */,
@@ -800,6 +811,8 @@
 				EC000001000000000000AD01 /* SystemSleepPreventer.swift in Sources */,
 				B3BF17C4244EBF4900CC44C5 /* InternalModule.swift in Sources */,
 				B3BF17C2244EBE9A00CC44C5 /* Router.swift in Sources */,
+				EC70RF00000000000000A002 /* RuntimeFlags.swift in Sources */,
+				EC70FP00000000000000A002 /* InboundFilterPolicy.swift in Sources */,
 				B375A65921EB14470073F09F /* AboutViewController.swift in Sources */,
 				EC000001000000000000AC03 /* WebhookManagementWindowController.swift in Sources */,
 				EC000001000000000000AC05 /* TunnelManagementWindowController.swift in Sources */,
@@ -841,6 +854,8 @@
 				EC000001000000000000AB02 /* RouteProvider.swift in Sources */,
 				B3B7E52524EA00BC00A3FBD1 /* JaredConstants.swift in Sources */,
 				B32DE51624D522DA00AB3A71 /* Router.swift in Sources */,
+				EC70RF00000000000000A004 /* RuntimeFlags.swift in Sources */,
+				EC70FP00000000000000A004 /* InboundFilterPolicy.swift in Sources */,
 				B3BF17CA244FDA3F00CC44C5 /* MessageDelegate.swift in Sources */,
 				B3B844C524D9288000DC162A /* RouterDelegate.swift in Sources */,
 				B3B844B824D7791800DC162A /* ActionTypeTest.swift in Sources */,
@@ -864,6 +879,7 @@
 				TM0000010000000000000004 /* TunnelManagerTests.swift in Sources */,
 				TM0000010000000000000002 /* TunnelManager.swift in Sources */,
 				B32DE51524D51F9C00AB3A71 /* RouterTests.swift in Sources */,
+				EC70PT00000000000000A002 /* InboundFilterPolicyTests.swift in Sources */,
 				B3EF1DA4220687DD00953DE7 /* URLProtocolMock.swift in Sources */,
 				B3EF1DA02206849000953DE7 /* WebHookManager.swift in Sources */,
 				EC66DC00000000000000A003 /* WebhookDeliveryClient.swift in Sources */,
