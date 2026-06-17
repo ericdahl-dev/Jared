@@ -46,15 +46,6 @@ struct ConfigurationHelper {
         return supportDir
     }
 
-    static func getPluginDirectory() -> URL {
-        let supportDir = getSupportDirectory()
-            .appendingPathComponent("Plugins")
-
-        try! fileManager.createDirectory(at: supportDir, withIntermediateDirectories: true, attributes: nil)
-
-        return supportDir
-    }
-
     private static func createConfigFileIfNotExists(at path: URL, using fileManager: FileManager) {
         guard !fileManager.fileExists(atPath: path.path) else { return }
         guard let source = Bundle.main.resourceURL?.appendingPathComponent("config.json") else {

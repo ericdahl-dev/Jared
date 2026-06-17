@@ -29,7 +29,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let config = ConfigurationHelper.getConfiguration()
         
         sender = Jared()
-        pluginManager = PluginManager(sender: sender, configuration: config, pluginDir: ConfigurationHelper.getPluginDirectory())
+        pluginManager = PluginManager(sender: sender, configuration: config)
         let webServer = JaredWebServer(sender: sender, configuration: config.webServer)
         server = webServer
         let configuredPort = config.webServer.port

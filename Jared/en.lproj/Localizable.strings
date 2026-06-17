@@ -49,8 +49,8 @@
 "helpDescription" = "Get help on commands";
 
 /* reload */
-"reloadDescription" = "Reload plugins";
-"reloadMessage" = "Successfully reloaded plugins.";
+"reloadDescription" = "Reload configuration";
+"reloadMessage" = "Successfully reloaded configuration.";
 
 "commandPrefix" = "Command: ";
 "parametersPrefix" = "Parameters: ";

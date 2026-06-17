@@ -1,6 +1,6 @@
 # Routes
 
-By using either native plugins, or a webhook configuration, you can define routes which are used to define triggers for messages. 
+By using a webhook configuration, you can define routes which are used to define triggers for messages. 
 
 ## Parameters
 
@@ -16,7 +16,7 @@ By using either native plugins, or a webhook configuration, you can define route
 
 `parameterSyntax`: A string that describes how to exercise your route. 
 `description`: A string that describes the purpose of this route
-`call`: A callback method to execute when the route is triggered. This is only required for native plugins. If you're using webhooks, your webhook endpoint will be called automatically. 
+`call`: A callback method to execute when the route is triggered. When using webhooks, your webhook endpoint is called automatically. 
 
 ## Example
 The following is an example configuration of one of Jared's built in routes, `/send`.
