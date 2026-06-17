@@ -48,7 +48,9 @@ DatabaseHandler (SQLite polling)
 | `Jared/DatabaseHandler.swift` | Polls `chat.db` (WAL watch + interval), applies inbound deferral policy, feeds `Message`s to `Router` |
 | `Jared/ChatDBReader.swift` | SQLite read layer: SQL → row DTOs (`MessageRow`, `GroupParticipantRow`, `AttachmentRow`), incl. `attributedBody` decoding. No `Message`/routing knowledge |
 | `Jared/MessageBuilder.swift` | DTO → `Message`/`Person`/`Group`/`Attachment`; injectable `contactNameResolver` (unit-testable without SQLite or Contacts) |
-| `Jared/Router.swift` | Matches incoming messages against all registered `Route`s |
+| `Jared/Router.swift` | Inbound pipeline runner: notify delegates → `InboundFilterPolicy` → match (`MessageMatcher`) → invoke route |
+| `Jared/InboundFilterPolicy.swift` | Inbound gate: self-message, body-type, global-disabled + `/enable` bypass; reads `RuntimeFlags` |
+| `Jared/RuntimeFlags.swift` | Port abstracting Jared's disabled state; `UserDefaultsRuntimeFlags` is the production read |
 | `Jared/PluginManager.swift` | Manages the list of built-in `RoutingModule`s |
 | `Jared/CoreModule.swift` | Built-in commands: `/ping`, `/send`, `/schedule`, `/name`, `/whoami`, `/barf`, etc. |
 | `Jared/InternalModule.swift` | `/help`, `/reload`, `/enable`, `/disable` commands |

@@ -18,8 +18,11 @@ private actor SendQueue {
 
 public class Jared: MessageSender {
     private let sendQueue = SendQueue()
-    
-    init() {}
+    private let flags: RuntimeFlags
+
+    init(flags: RuntimeFlags = UserDefaultsRuntimeFlags()) {
+        self.flags = flags
+    }
     
     public func send(_ body: String, to recipient: RecipientEntity?) {
         guard var recipient = recipient else {
@@ -37,10 +40,8 @@ public class Jared: MessageSender {
     public func send(_ message: Message) {
         NSLog("Attemping to send message: \(message)")
         
-        let defaults = UserDefaults.standard
-        
         //Don't send the message if Jared is currently disabled.
-        guard !defaults.bool(forKey: JaredConstants.jaredIsDisabled) else {
+        guard !flags.isDisabled else {
             return
         }
         

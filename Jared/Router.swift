@@ -13,26 +13,23 @@ class Router : RouterDelegate {
     var pluginManager: RouteProvider
     var messageDelegates: [MessageDelegate]
     private let matcher = MessageMatcher()
-    
-    init(pluginManager: RouteProvider, messageDelegates: [MessageDelegate]) {
+    private let filterPolicy: InboundFilterPolicy
+
+    init(pluginManager: RouteProvider, messageDelegates: [MessageDelegate],
+         flags: RuntimeFlags = UserDefaultsRuntimeFlags()) {
         self.pluginManager = pluginManager
         self.messageDelegates = messageDelegates
+        self.filterPolicy = InboundFilterPolicy(flags: flags)
     }
-    
+
     func route(message myMessage: Message) {
+        // Stage 1 — NotifyDelegates: every message (incl. outgoing) reaches delegates.
         messageDelegates.forEach { delegate in delegate.didProcess(message: myMessage) }
-        
-        if let sender = myMessage.sender as? Person, sender.isMe {
-            return
-        }
-        
-        guard myMessage.body is TextBody || myMessage.action != nil else { return }
-        
-        let defaults = UserDefaults.standard
-        let isDisabled = defaults.bool(forKey: JaredConstants.jaredIsDisabled)
-        let isEnable = (myMessage.body as? TextBody)?.message.lowercased() == "/enable"
-        guard !isDisabled || isEnable else { return }
-        
+
+        // Stage 2 — FilterPolicy: self-message, body-type, global-disabled + /enable bypass.
+        guard filterPolicy.shouldRoute(myMessage) else { return }
+
+        // Stage 3/4 — MatchRoutes + InvokeRoute.
         for route in pluginManager.getAllRoutes() {
             guard pluginManager.enabled(routeName: route.name) else { continue }
             if let deliverable = matcher.matchingMessage(route: route, message: myMessage) {
