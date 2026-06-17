@@ -8,10 +8,13 @@ final class MockTunnelRunner: TunnelRunner {
     var stopCallCount = 0
     var onOutput: ((String) -> Void)?
 
+    var onComplete: ((Error?) -> Void)?
+
     func start(command: TunnelLaunchCommand, onOutput: @escaping (String) -> Void, onComplete: @escaping (Error?) -> Void) {
         startCallCount += 1
         lastCommand = command
         self.onOutput = onOutput
+        self.onComplete = onComplete
         isRunning = true
     }
 
@@ -160,6 +163,94 @@ class TunnelManagerTests: XCTestCase {
         XCTAssertNil(manager.publicURL)
         XCTAssertFalse(runner.isRunning)
         XCTAssertGreaterThanOrEqual(runner.stopCallCount, 1)
+    }
+
+    func testSyncStartsNgrokWithTokenFromKeychain() {
+        let runner = MockTunnelRunner()
+        let keychain = MockKeychain()
+        keychain.save(secret: "mytoken", for: TunnelManager.ngrokKeychainAccount)
+        let manager = TunnelManager(
+            configuration: TunnelConfiguration(enabled: true, provider: .ngrok),
+            runner: runner,
+            keychain: keychain,
+            localPortProvider: { 3005 }
+        )
+
+        manager.sync(restApiEnabled: true, localPort: 3005)
+
+        XCTAssertEqual(runner.startCallCount, 1)
+        XCTAssertEqual(runner.lastCommand, .ngrok(localPort: 3005, authToken: "mytoken"))
+    }
+
+    func testSyncSetsErrorWhenNgrokTokenMissing() {
+        let runner = MockTunnelRunner()
+        let manager = TunnelManager(
+            configuration: TunnelConfiguration(enabled: true, provider: .ngrok),
+            runner: runner,
+            keychain: MockKeychain(),
+            localPortProvider: { 3005 }
+        )
+
+        manager.sync(restApiEnabled: true, localPort: 3005)
+
+        XCTAssertEqual(runner.startCallCount, 0)
+        XCTAssertNotNil(manager.lastError)
+    }
+
+    func testSyncSetsErrorWhenNgrokTokenIsEmpty() {
+        let runner = MockTunnelRunner()
+        let keychain = MockKeychain()
+        keychain.save(secret: "", for: TunnelManager.ngrokKeychainAccount)
+        let manager = TunnelManager(
+            configuration: TunnelConfiguration(enabled: true, provider: .ngrok),
+            runner: runner,
+            keychain: keychain,
+            localPortProvider: { 3005 }
+        )
+
+        manager.sync(restApiEnabled: true, localPort: 3005)
+
+        XCTAssertEqual(runner.startCallCount, 0)
+        XCTAssertNotNil(manager.lastError)
+    }
+
+    func testProcessErrorSetsLastError() {
+        let runner = MockTunnelRunner()
+        let manager = TunnelManager(
+            configuration: TunnelConfiguration(enabled: true, provider: .cloudflared),
+            runner: runner,
+            keychain: MockKeychain(),
+            localPortProvider: { 3005 }
+        )
+
+        manager.sync(restApiEnabled: true, localPort: 3005)
+        runner.onComplete?(TunnelError.processExited(127))
+
+        XCTAssertNotNil(manager.lastError)
+        XCTAssertTrue(manager.lastError!.contains("127"), "error message should include exit code")
+    }
+
+    func testDuplicateURLLineDoesNotPostSecondNotification() {
+        let runner = MockTunnelRunner()
+        let manager = TunnelManager(
+            configuration: TunnelConfiguration(enabled: true, provider: .cloudflared),
+            runner: runner,
+            keychain: MockKeychain(),
+            localPortProvider: { 3005 }
+        )
+        var notificationCount = 0
+        let token = NotificationCenter.default.addObserver(
+            forName: TunnelManager.publicURLDidChangeNotification,
+            object: manager,
+            queue: nil
+        ) { _ in notificationCount += 1 }
+
+        manager.sync(restApiEnabled: true, localPort: 3005)
+        runner.onOutput?("|  https://abc-def.trycloudflare.com  |")
+        runner.onOutput?("|  https://abc-def.trycloudflare.com  |")
+
+        NotificationCenter.default.removeObserver(token)
+        XCTAssertEqual(notificationCount, 1, "duplicate URL line must not post a second notification")
     }
 
     func testWebserverConfigurationDecodesTunnelBlock() throws {
