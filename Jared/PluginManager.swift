@@ -57,11 +57,7 @@ class PluginManager: RouteProvider, PluginController, ConfigurationApplier {
     }
     
     func enabled(routeName: String) -> Bool {
-        if let routeConfig = config.routes[routeName.lowercased()] {
-            return !routeConfig.disabled
-        } else {
-            return true
-        }
+        return !(config.disabledCommands[routeName.lowercased()] ?? false)
     }
     
     func getAllModules() -> [RoutingModule] {
