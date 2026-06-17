@@ -52,7 +52,10 @@ DatabaseHandler (SQLite polling)
 | `Jared/InboundFilterPolicy.swift` | Inbound gate: self-message, body-type, global-disabled + `/enable` bypass; reads `RuntimeFlags` |
 | `Jared/RuntimeFlags.swift` | Port abstracting Jared's disabled state; `UserDefaultsRuntimeFlags` is the production read |
 | `Jared/PluginManager.swift` | Manages the list of built-in `RoutingModule`s |
-| `Jared/CoreModule.swift` | Built-in commands: `/ping`, `/send`, `/schedule`, `/name`, `/whoami`, `/barf`, etc. |
+| `Jared/CoreModule.swift` | Built-in commands: `/ping`, `/send`, `/name`, `/whoami`, `/barf`, etc. Side effects injected via ports (`ContactNameService`, `Clock`, `SendRateLimiter`) so commands are testable |
+| `Jared/ContactNameService.swift` | Port hiding `CNContactStore` for `/name`; `CNContactNameService` adapter (no `try!`), fakeable in tests |
+| `Jared/Clock.swift` | Async sleep port (`RealClock`) so `/send` delays run instantly under test |
+| `Jared/SendRateLimiter.swift` | Per-handle concurrency limiter for `/send`; deterministic, no async timing |
 | `Jared/InternalModule.swift` | `/help`, `/reload`, `/enable`, `/disable` commands |
 | `Jared/WebHookManager.swift` | Implements both `MessageDelegate` (notify on all messages) and `RoutingModule` (webhook-defined routes) |
 | `Jared/JaredWebServer.swift` | REST API web server |
