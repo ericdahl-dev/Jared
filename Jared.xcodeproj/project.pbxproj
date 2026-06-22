@@ -20,6 +20,9 @@
 		B319236224DE76A2001904BA /* JaredUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B319236124DE76A2001904BA /* JaredUITests.swift */; };
 		B32DE51524D51F9C00AB3A71 /* RouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B32DE51424D51F9C00AB3A71 /* RouterTests.swift */; };
 		EC71CM00000000000000A002 /* CoreModuleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC71CM00000000000000A001 /* CoreModuleTests.swift */; };
+		RT00TEST0000000000002BF0 /* RouteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = RT00TEST0000000000001FRF /* RouteTests.swift */; };
+		WRF0TEST0000000000002BF0 /* WebhookRouteFactoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = WRF0TEST0000000000001FRF /* WebhookRouteFactoryTests.swift */; };
+		PM00TEST0000000000002BF0 /* PluginManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = PM00TEST0000000000001FRF /* PluginManagerTests.swift */; };
 		B32DE51624D522DA00AB3A71 /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3BF17C1244EBE9A00CC44C5 /* Router.swift */; };
 		EC70RF00000000000000A004 /* RuntimeFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC70RF00000000000000A001 /* RuntimeFlags.swift */; };
 		EC70FP00000000000000A004 /* InboundFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC70FP00000000000000A001 /* InboundFilterPolicy.swift */; };
@@ -80,6 +83,7 @@
 		B38BB6AD24EB99BE000700F7 /* Webhook.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3B7E52824EA579600A3FBD1 /* Webhook.swift */; };
 		B38BB6AF24EBB4D8000700F7 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = B36C8D7E24EA655900C00A99 /* Configuration.swift */; };
 		B39A65E01CC1FB1B003E26B0 /* PluginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B39A65DF1CC1FB1B003E26B0 /* PluginManager.swift */; };
+		PM00000000000000000001BF /* PluginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B39A65DF1CC1FB1B003E26B0 /* PluginManager.swift */; };
 		B39F2B391CB3BCA700C0D35C /* SendText.scpt in Resources */ = {isa = PBXBuildFile; fileRef = B39F2B381CB3BCA700C0D35C /* SendText.scpt */; };
 		B3A4C61423B867E300B7F009 /* MessageRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3A4C61323B867E300B7F009 /* MessageRequest.swift */; };
 		B3AECB5F2207CE33003E32F8 /* JaredFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F84B61F1CC506790059A82B /* JaredFramework.framework */; };
@@ -204,6 +208,9 @@
 		B319236324DE76A2001904BA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B32DE51424D51F9C00AB3A71 /* RouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouterTests.swift; sourceTree = "<group>"; };
 		EC71CM00000000000000A001 /* CoreModuleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreModuleTests.swift; sourceTree = "<group>"; };
+		RT00TEST0000000000001FRF /* RouteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteTests.swift; sourceTree = "<group>"; };
+		WRF0TEST0000000000001FRF /* WebhookRouteFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebhookRouteFactoryTests.swift; sourceTree = "<group>"; };
+		PM00TEST0000000000001FRF /* PluginManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginManagerTests.swift; sourceTree = "<group>"; };
 		B32DE51924D5524300AB3A71 /* Action.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Action.swift; sourceTree = "<group>"; };
 		B32DE51B24D552D300AB3A71 /* MockPluginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPluginManager.swift; sourceTree = "<group>"; };
 		B33278511CB2C94700BBDD3A /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
@@ -409,6 +416,9 @@
 				B3B844B924D77A4800DC162A /* SendStyleTest.swift */,
 				B32DE51424D51F9C00AB3A71 /* RouterTests.swift */,
 				EC71CM00000000000000A001 /* CoreModuleTests.swift */,
+				RT00TEST0000000000001FRF /* RouteTests.swift */,
+				WRF0TEST0000000000001FRF /* WebhookRouteFactoryTests.swift */,
+				PM00TEST0000000000001FRF /* PluginManagerTests.swift */,
 				EC70PT00000000000000A001 /* InboundFilterPolicyTests.swift */,
 				B3B844CF24DA6AC800DC162A /* JaredWebServerTest.swift */,
 				TM0000010000000000000005 /* TunnelManagerTests.swift */,
@@ -882,6 +892,7 @@
 				B3B844C724D9298000DC162A /* MockRouter.swift in Sources */,
 				B347A4AD24DD170C00E93657 /* ActionTest.swift in Sources */,
 				B36710E224DFB5EC00DA1C5D /* JaredMock.swift in Sources */,
+				PM00000000000000000001BF /* PluginManager.swift in Sources */,
 				B3B844C224D8FA7D00DC162A /* DatabaseTestHelper.swift in Sources */,
 				B38BB6AD24EB99BE000700F7 /* Webhook.swift in Sources */,
 				AD456B8A60A74A9E90DC26CA /* KeychainAccessor.swift in Sources */,
@@ -899,6 +910,9 @@
 				TM0000010000000000000002 /* TunnelManager.swift in Sources */,
 				B32DE51524D51F9C00AB3A71 /* RouterTests.swift in Sources */,
 				EC71CM00000000000000A002 /* CoreModuleTests.swift in Sources */,
+				RT00TEST0000000000002BF0 /* RouteTests.swift in Sources */,
+				WRF0TEST0000000000002BF0 /* WebhookRouteFactoryTests.swift in Sources */,
+				PM00TEST0000000000002BF0 /* PluginManagerTests.swift in Sources */,
 				EC71C000000000000000A010 /* CoreModule.swift in Sources */,
 				EC71CS00000000000000A004 /* ContactNameService.swift in Sources */,
 				EC71CK00000000000000A004 /* Clock.swift in Sources */,
